@@ -1,0 +1,25 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/backup-runs",
+    "ability": "app:backup",
+    "kind": "request",
+    "variant": "terminal success (links backup_archive_id)",
+    "status": "planned",
+    "planned_ref": "ADR-0008 §2.3 — R4a",
+    "note": "Posted after /agent/archives returns the archive id; collapses the running row on (application_id, agent_run_uuid)."
+  },
+  "body": {
+    "agent_run_uuid": "6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c",
+    "kind": "database",
+    "status": "success",
+    "trigger": "scheduled",
+    "started_at": "2026-06-29T12:00:00+00:00",
+    "finished_at": "2026-06-29T12:04:30+00:00",
+    "size_bytes": 5368709120,
+    "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "backup_archive_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+    "agent_version": "1.4.0"
+  }
+}

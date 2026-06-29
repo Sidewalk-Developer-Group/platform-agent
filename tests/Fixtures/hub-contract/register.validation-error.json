@@ -1,0 +1,21 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/register",
+    "ability": "agent:register",
+    "kind": "validation-error-response",
+    "status_code": 422,
+    "status": "shipped",
+    "source": "AgentRequest::failedValidation + ApiResponse::error"
+  },
+  "body": {
+    "success": false,
+    "message": "Validation failed.",
+    "data": null,
+    "errors": {
+      "agent_version": ["The agent version field is required."]
+    },
+    "meta": {}
+  }
+}

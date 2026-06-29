@@ -1,0 +1,17 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/register",
+    "ability": "agent:register",
+    "kind": "request",
+    "status": "shipped",
+    "source": "AgentRegisterRequest"
+  },
+  "body": {
+    "agent_version": "1.4.0",
+    "hostname": "abc-erp-prod-web-01",
+    "fingerprint": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "metadata": { "os": "Ubuntu 24.04", "php": "8.3.10" }
+  }
+}

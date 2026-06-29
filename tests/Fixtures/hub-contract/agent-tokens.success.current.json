@@ -1,0 +1,26 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/applications/{application}/agent-tokens",
+    "kind": "success-response",
+    "variant": "full-ability token, no expiry (shipped R4 behavior)",
+    "status_code": 201,
+    "status": "shipped",
+    "note": "Current shipped behavior: mints AuthenticateApplicationAgent::AGENT_ABILITIES (all four) with no expiry. Superseded by the enrollment-only target (agent-tokens.success.json) at the Addendum-D R4-surface adjustment.",
+    "source": "AgentRegistrationsController::issueToken (as shipped)"
+  },
+  "body": {
+    "success": true,
+    "message": "Application Agent Token Issued",
+    "data": {
+      "application_id": "9d1f2c34-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
+      "token_id": "4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+      "name": "abc-erp-prod agent enrollment",
+      "abilities": ["agent:register", "app:backup", "app:heartbeat", "app:restore"],
+      "token": "1|EnRoLLmEnTtOkEneXaMpLe0123456789aBcDeFgHiJkLmNoP"
+    },
+    "errors": null,
+    "meta": {}
+  }
+}

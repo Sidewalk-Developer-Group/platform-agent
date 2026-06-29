@@ -1,0 +1,21 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/heartbeat",
+    "ability": "app:heartbeat",
+    "kind": "request",
+    "status": "shipped",
+    "source": "AgentHeartbeatRequest"
+  },
+  "body": {
+    "agent_version": "1.4.0",
+    "php_version": "8.3.10",
+    "framework_version": "Laravel 12.4.1",
+    "status": "healthy",
+    "last_backup_at": "2026-06-29T11:45:00+00:00",
+    "storage_usage_bytes": 5368709120,
+    "metadata": { "queue": "ok", "disk_free_pct": 62 },
+    "recorded_at": "2026-06-29T12:00:00+00:00"
+  }
+}

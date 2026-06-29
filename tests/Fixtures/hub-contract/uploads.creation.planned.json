@@ -1,0 +1,36 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/uploads (tus.io 1.0 creation)",
+    "ability": "app:backup",
+    "kind": "exchange (headers)",
+    "status": "planned",
+    "planned_ref": "ADR-0007 Addendum C / ADR-0004 ingress addendum — R4b",
+    "note": "tus is header-driven; bytes flow over subsequent PATCH. Upload-Metadata is base64 key/value per tus. application_id is token-derived and MUST NOT appear in metadata."
+  },
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/agent/uploads",
+    "headers": {
+      "Tus-Resumable": "1.0.0",
+      "Authorization": "Bearer 2|aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789aBcDeFgHiJkL",
+      "Upload-Length": "32212254720",
+      "Upload-Metadata": "filename YWJjLWVycC1wcm9kLTIwMjYtMDYtMjktMTIwMC56aXA=,kind ZGF0YWJhc2U=,checksum ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NQ==,agent_run_uuid NmY3YThiOWMtMGQxZS00ZjJhLTNiNGMtNWQ2ZTdmOGE5YjBj"
+    },
+    "decoded_upload_metadata": {
+      "filename": "abc-erp-prod-2026-06-29-1200.zip",
+      "kind": "database",
+      "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "agent_run_uuid": "6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c"
+    }
+  },
+  "response": {
+    "status_code": 201,
+    "headers": {
+      "Tus-Resumable": "1.0.0",
+      "Location": "https://hub.sidewalkdevelopers.example/api/v1/agent/uploads/upl_6f7a8b9c0d1e",
+      "Upload-Expires": "2026-07-01T12:00:00+00:00"
+    }
+  }
+}

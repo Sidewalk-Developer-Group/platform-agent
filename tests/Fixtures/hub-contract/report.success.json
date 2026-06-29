@@ -1,0 +1,33 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/report",
+    "ability": "app:heartbeat",
+    "kind": "success-response",
+    "status_code": 200,
+    "status": "shipped",
+    "source": "AgentEndpointsController::report + ApplicationHeartbeatResource"
+  },
+  "body": {
+    "success": true,
+    "message": "Agent Report Received",
+    "data": {
+      "heartbeat": {
+        "id": "8b9c0d1e-2f3a-4b4c-8d5e-6f7a8b9c0d1e",
+        "application_id": "9d1f2c34-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
+        "agent_version": "1.4.0",
+        "php_version": "8.3.10",
+        "framework_version": "Laravel 12.4.1",
+        "status": "degraded",
+        "last_backup_at": "2026-06-29T11:45:00+00:00",
+        "storage_usage_bytes": 5368709120,
+        "metadata": { "scheduler": "running", "notes": "queue backlog rising" },
+        "recorded_at": "2026-06-29T12:05:00+00:00"
+      },
+      "version_warning": null
+    },
+    "errors": null,
+    "meta": {}
+  }
+}

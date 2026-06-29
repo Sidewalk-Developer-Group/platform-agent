@@ -1,0 +1,21 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/heartbeat",
+    "ability": "app:heartbeat",
+    "kind": "validation-error-response",
+    "status_code": 422,
+    "status": "shipped",
+    "source": "AgentRequest::failedValidation + ApiResponse::error"
+  },
+  "body": {
+    "success": false,
+    "message": "Validation failed.",
+    "data": null,
+    "errors": {
+      "status": ["The selected status is invalid."]
+    },
+    "meta": {}
+  }
+}

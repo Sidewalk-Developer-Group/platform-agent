@@ -1,0 +1,14 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/applications/{application}/agent-tokens",
+    "guard": "auth:api (operator) + Spatie agent_registrations.issue_token",
+    "kind": "request",
+    "status": "shipped",
+    "source": "IssueApplicationTokenRequest"
+  },
+  "body": {
+    "name": "abc-erp-prod agent enrollment"
+  }
+}

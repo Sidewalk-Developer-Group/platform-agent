@@ -1,0 +1,22 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/archives",
+    "ability": "app:backup",
+    "kind": "request",
+    "variant": "metadata-only (application/json; no file bytes)",
+    "status": "shipped",
+    "source": "AgentRegisterArchiveRequest",
+    "note": "body.kind (database|files) is the split-backup discriminator — R4a.1 additive (ADR-0008 §2.9), not in the shipped request yet"
+  },
+  "body": {
+    "filename": "abc-erp-prod-db-2026-06-29-1200.zip",
+    "kind": "database",
+    "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "computed_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 5368709120,
+    "storage_node_id": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f",
+    "uploaded_at": "2026-06-29T12:00:00+00:00"
+  }
+}

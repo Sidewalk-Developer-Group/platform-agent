@@ -1,0 +1,55 @@
+{
+    "name": "sidewalkdevelopers/platform-agent",
+    "description": "Official Sidewalk Developers Group Platform Agent — near-zero-code backup, checksum, upload, heartbeat and restore integration for the Distributed Backup Orchestration Platform (Cloud Hub).",
+    "keywords": ["laravel", "backup", "disaster-recovery", "agent", "sidewalk-developers", "platform-agent"],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/sidewalkdevelopers/platform-agent",
+    "authors": [
+        {
+            "name": "Sidewalk Developers Group",
+            "homepage": "https://sidewalkdevelopers.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2 || ^8.3 || ^8.4",
+        "illuminate/support": "^11.0 || ^12.0",
+        "illuminate/console": "^11.0 || ^12.0",
+        "illuminate/http": "^11.0 || ^12.0",
+        "spatie/laravel-backup": "^10.0",
+        "ankitpokhrel/tus-php": "^2.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "pestphp/pest": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SidewalkDevelopers\\PlatformAgent\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SidewalkDevelopers\\PlatformAgent\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SidewalkDevelopers\\PlatformAgent\\PlatformAgentServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

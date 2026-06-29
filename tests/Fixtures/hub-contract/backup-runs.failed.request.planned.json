@@ -1,0 +1,23 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/backup-runs",
+    "ability": "app:backup",
+    "kind": "request",
+    "variant": "terminal failed (sanitized error_message)",
+    "status": "planned",
+    "planned_ref": "ADR-0008 §2.3 / ADR-0007 §7.5 — R4a",
+    "note": "Failures must reach the Hub/portal and the Coverage KPI. error_message carries no secrets."
+  },
+  "body": {
+    "agent_run_uuid": "6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c",
+    "kind": "database",
+    "status": "failed",
+    "trigger": "scheduled",
+    "started_at": "2026-06-29T12:00:00+00:00",
+    "finished_at": "2026-06-29T12:01:12+00:00",
+    "error_message": "Database dump failed: SQLSTATE[HY000] connection refused",
+    "agent_version": "1.4.0"
+  }
+}

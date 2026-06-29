@@ -1,0 +1,28 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "PATCH /api/v1/agent/uploads/{id} (tus checksum extension)",
+    "ability": "app:backup",
+    "kind": "error (per-chunk checksum mismatch)",
+    "status": "planned",
+    "planned_ref": "ADR-0007 Addendum C §C.5 — R4b",
+    "note": "Per-chunk Upload-Checksum failed; tus returns 460 Checksum Mismatch and the chunk is re-sent. This is early detection only — authoritative Rule-4 verification is the full-file SHA256 at finalize."
+  },
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/agent/uploads/upl_6f7a8b9c0d1e",
+    "headers": {
+      "Tus-Resumable": "1.0.0",
+      "Content-Type": "application/offset+octet-stream",
+      "Upload-Offset": "8388608",
+      "Upload-Checksum": "sha256 GBnLb2A0corruptedchunkdigestbase64==",
+      "Authorization": "Bearer 2|aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789aBcDeFgHiJkL"
+    }
+  },
+  "response": {
+    "status_code": 460,
+    "headers": { "Tus-Resumable": "1.0.0" },
+    "meaning": "Checksum Mismatch — re-send the chunk from Upload-Offset"
+  }
+}

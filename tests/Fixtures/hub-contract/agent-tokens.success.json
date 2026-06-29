@@ -1,0 +1,28 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/applications/{application}/agent-tokens",
+    "kind": "success-response",
+    "variant": "enrollment-only token (target)",
+    "status_code": 201,
+    "status": "planned",
+    "planned_ref": "ADR-0007 Addendum D (enrollment-exchange) — R4-surface adjustment",
+    "note": "Target shape: ability agent:register ONLY + expires_at. Shipped code currently mints the full ability set with no expiry — see agent-tokens.success.current.json.",
+    "source": "AgentRegistrationsController::issueToken (target shape)"
+  },
+  "body": {
+    "success": true,
+    "message": "Application Agent Token Issued",
+    "data": {
+      "application_id": "9d1f2c34-5b6a-4c7d-8e9f-0a1b2c3d4e5f",
+      "token_id": "4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+      "name": "abc-erp-prod agent enrollment",
+      "abilities": ["agent:register"],
+      "expires_at": "2026-07-02T12:00:00+00:00",
+      "token": "1|EnRoLLmEnTtOkEneXaMpLe0123456789aBcDeFgHiJkLmNoP"
+    },
+    "errors": null,
+    "meta": {}
+  }
+}

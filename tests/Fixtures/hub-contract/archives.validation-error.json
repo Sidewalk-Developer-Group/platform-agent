@@ -1,0 +1,23 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/archives",
+    "ability": "app:backup",
+    "kind": "validation-error-response",
+    "variant": "metadata-only without computed_checksum + size_bytes",
+    "status_code": 422,
+    "status": "shipped",
+    "source": "AgentRegisterArchiveRequest + ApiResponse::error"
+  },
+  "body": {
+    "success": false,
+    "message": "Validation failed.",
+    "data": null,
+    "errors": {
+      "computed_checksum": ["The computed checksum of the uploaded archive is required."],
+      "size_bytes": ["The size bytes field is required."]
+    },
+    "meta": {}
+  }
+}

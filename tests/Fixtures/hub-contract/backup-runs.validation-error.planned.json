@@ -1,0 +1,23 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.0.0",
+    "date": "2026-06-29",
+    "endpoint": "POST /api/v1/agent/backup-runs",
+    "ability": "app:backup",
+    "kind": "validation-error-response",
+    "status_code": 422,
+    "status": "planned",
+    "planned_ref": "ADR-0008 §2.3 — R4a",
+    "source": "ApiResponse::error (planned)"
+  },
+  "body": {
+    "success": false,
+    "message": "Validation failed.",
+    "data": null,
+    "errors": {
+      "agent_run_uuid": ["The agent run uuid field is required."],
+      "status": ["The selected status is invalid."]
+    },
+    "meta": {}
+  }
+}
