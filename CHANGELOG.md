@@ -5,10 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the package follows [SemVer](https://semver.org). The published version IS the
 `agent_version` reported on the wire (ADR-0007 §2.9).
 
-**Minimum Hub Agent Contract targeted: v1.1.0** (the additive split-backup `kind`
-discriminator — ADR-0007 Addendum F).
+**Minimum Hub Agent Contract targeted: v1.2.0** (the enrollment-exchange
+`register` runtime-token block — ADR-0007 Addendum D; supersedes the v1.1.0
+split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
+
+### Added (PA1 — install + onboarding)
+
+- **Encrypted DB-backed `CredentialStore`** (`DatabaseCredentialStore`) — persists
+  the durable runtime PAT encrypted at rest (Laravel `Crypt` / customer APP_KEY)
+  in the customer DB via a published/loaded package migration
+  (`platform_agent_credentials`); never written to `.env`. Replaces the PA0
+  config stub; the frozen `CredentialStore` interface is unchanged.
+- **`platform-agent:install`** — publishes config, validates the 3 env vars,
+  runs the enrollment → runtime PAT exchange (`POST /api/v1/agent/register`),
+  persists the runtime PAT encrypted, prints a schedule-wiring hint, and fails
+  loudly on missing-env / auth (401) / connectivity / 426 upgrade-required.
+  Re-install rotates the runtime token (requires a fresh enrollment token).
+- **`platform-agent:diagnose`** — prints resolved config with tokens redacted,
+  runtime-token presence + non-secret meta, and a Hub connectivity probe.
+- Pinned Hub contract bumped to **v1.2.0** (`register` now returns
+  `data.runtime_token` and single-use-consumes the enrollment token).
 
 ### Added (PA0 — repo + skeleton + contract pin)
 

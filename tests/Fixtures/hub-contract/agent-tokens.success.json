@@ -1,15 +1,15 @@
 {
   "_contract": {
-    "hub_agent_contract_version": "1.0.0",
-    "date": "2026-06-29",
+    "hub_agent_contract_version": "1.2.0",
+    "date": "2026-06-30",
     "endpoint": "POST /api/v1/applications/{application}/agent-tokens",
     "kind": "success-response",
-    "variant": "enrollment-only token (target)",
+    "variant": "enrollment-only token",
     "status_code": 201,
-    "status": "planned",
-    "planned_ref": "ADR-0007 Addendum D (enrollment-exchange) — R4-surface adjustment",
-    "note": "Target shape: ability agent:register ONLY + expires_at. Shipped code currently mints the full ability set with no expiry — see agent-tokens.success.current.json.",
-    "source": "AgentRegistrationsController::issueToken (target shape)"
+    "status": "shipped",
+    "shipped_ref": "ADR-0007 Addendum D (enrollment-exchange) — R4-surface adjustment, shipped 2026-06-30",
+    "note": "Mints ability agent:register ONLY + a config-driven expires_at (agentmanagement.token.enrollment_ttl_minutes, default 60m). Single-use: consumed at /register. The retired full-ability/no-expiry shape is gone.",
+    "source": "AgentRegistrationsController::issueToken"
   },
   "body": {
     "success": true,

@@ -21,7 +21,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
-        <env name="APP_KEY" value="base64:AhMVu2Xj0n8t8qkXG3sFh2bq3lqg0Qz2Yc1Tq3oVbE="/>
+        <env name="APP_KEY" value="base64:hpmtnoLBAzMYbqFXRvyrrNB+pFA0W2M3JBr81qO6RXc="/>
         <env name="PLATFORM_URL" value="https://hub.platform.test"/>
     </php>
 </phpunit>

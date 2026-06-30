@@ -1,15 +1,15 @@
 {
   "_contract": {
-    "hub_agent_contract_version": "1.0.0",
-    "date": "2026-06-29",
+    "hub_agent_contract_version": "1.2.0",
+    "date": "2026-06-30",
     "endpoint": "POST /api/v1/agent/register",
     "ability": "agent:register (enrollment token, single-use)",
     "kind": "success-response",
     "status_code": 201,
-    "status": "planned",
-    "planned_ref": "ADR-0007 Addendum D (enrollment-exchange) — R4-surface adjustment",
-    "note": "Adds runtime_token block. The shipped R4 code does NOT yet emit this; pin for forward readiness only.",
-    "source": "AgentEndpointsController::register (target shape)"
+    "status": "shipped",
+    "shipped_ref": "ADR-0007 Addendum D (enrollment-exchange) — R4-surface adjustment, shipped 2026-06-30",
+    "note": "SHIPPED: data.runtime_token carries the durable runtime PAT (abilities app:backup/app:heartbeat/app:restore, expires_at null unless runtime TTL configured); the enrollment token is consumed on success and a prior runtime token (if any) is rotated. Filename retains the historical 'planned' suffix that PA1 pins against.",
+    "source": "AgentEndpointsController::register"
   },
   "body": {
     "success": true,

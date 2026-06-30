@@ -25,6 +25,15 @@ abstract class TestCase extends Orchestra
      */
     protected function defineEnvironment($app): void
     {
+        $app['config']->set('app.key', 'base64:hpmtnoLBAzMYbqFXRvyrrNB+pFA0W2M3JBr81qO6RXc=');
+
+        $app['config']->set('database.default', 'testing');
+        $app['config']->set('database.connections.testing', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+        ]);
+
         $app['config']->set('platform-agent.url', 'https://hub.platform.test');
         $app['config']->set('platform-agent.api_prefix', 'api/v1');
         $app['config']->set('platform-agent.token', 'enrollment-token-fixture');

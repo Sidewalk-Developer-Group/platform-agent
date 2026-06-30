@@ -83,4 +83,18 @@ final class AgentResponse
     {
         return Arr::get($this->data, $key, $default);
     }
+
+    /**
+     * The `data.runtime_token` block from the enrollment-exchange register
+     * response (token, token_id, abilities, expires_at), or null when absent
+     * (Hub Agent Contract v1.2.0 / ADR-0007 Addendum D).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function runtimeToken(): ?array
+    {
+        $block = $this->get('runtime_token');
+
+        return is_array($block) ? $block : null;
+    }
 }

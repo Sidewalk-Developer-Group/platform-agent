@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SidewalkDevelopers\PlatformAgent;
 
+use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
@@ -14,19 +16,22 @@ use SidewalkDevelopers\PlatformAgent\Console\InstallCommand;
 use SidewalkDevelopers\PlatformAgent\Console\RegisterCommand;
 use SidewalkDevelopers\PlatformAgent\Console\ReportCommand;
 use SidewalkDevelopers\PlatformAgent\Console\RestoreCommand;
-use SidewalkDevelopers\PlatformAgent\Credentials\ConfigCredentialStore;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
+use SidewalkDevelopers\PlatformAgent\Credentials\DatabaseCredentialStore;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
 
 /**
  * Auto-discovered package provider (extra.laravel.providers in composer.json).
  *
- * PA0 scope: merge + publish config, bind the CredentialStore seam and the
- * PlatformClient singleton, and register the command surface. No business logic.
+ * Binds the encrypted DB-backed CredentialStore (PA1), the PlatformClient
+ * singleton, the command surface, and loads/publishes the package config +
+ * credential migration. No backup/restore business logic yet (PA3/PA4).
  */
 final class PlatformAgentServiceProvider extends ServiceProvider
 {
     private const CONFIG_PATH = __DIR__.'/../config/platform-agent.php';
+
+    private const MIGRATIONS_PATH = __DIR__.'/../database/migrations';
 
     public function register(): void
     {
@@ -36,10 +41,16 @@ final class PlatformAgentServiceProvider extends ServiceProvider
         // Http facade (incl. Http::fake() in tests) operate on the same object.
         $this->app->singleton(HttpFactory::class);
 
-        // The credential seam. PA0 ships the config/array-backed stub; PA1
-        // swaps in the encrypted-DB implementation + the enrollment exchange.
+        // The credential seam — PA1 binds the encrypted DB-backed store over the
+        // frozen interface. The runtime PAT is encrypted at rest; the enrollment
+        // token comes from config. Never written back to `.env`.
         $this->app->singleton(CredentialStore::class, static function ($app): CredentialStore {
-            return new ConfigCredentialStore($app['config']);
+            return new DatabaseCredentialStore(
+                config: $app['config'],
+                db: $app->make(ConnectionResolverInterface::class),
+                crypt: $app->make(Encrypter::class),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
         });
 
         $this->app->singleton(PlatformClient::class, static function ($app): PlatformClient {
@@ -54,10 +65,18 @@ final class PlatformAgentServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Loaded always so `php artisan migrate` discovers the credential table
+        // in the customer app (package migration discipline — additive).
+        $this->loadMigrationsFrom(self::MIGRATIONS_PATH);
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 self::CONFIG_PATH => $this->app->configPath('platform-agent.php'),
             ], 'platform-agent-config');
+
+            $this->publishes([
+                self::MIGRATIONS_PATH => $this->app->databasePath('migrations'),
+            ], 'platform-agent-migrations');
 
             $this->commands([
                 InstallCommand::class,

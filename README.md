@@ -9,9 +9,10 @@ logic so the customer writes near-zero code: backup creation (database + files,
 split), SHA256 checksum generation, resumable archive upload, heartbeats, health
 and version reporting, and agent-pull restore.
 
-> Status: **PA0 (skeleton + pinned contract)**. The HTTP client, config, command
-> surface and contract tests exist now. `install` / `register` / `backup` /
-> `restore` land in PA1–PA4 (see `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN
+> Status: **PA1 (install + onboarding)**. The HTTP client, config, contract
+> tests, the encrypted credential store, and the `install` + `diagnose` commands
+> are live. `register` / `heartbeat` / `report` (PA2), `backup` (PA3) and
+> `restore` (PA4) land next (see `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN
 > §11a).
 
 ## Requirements

@@ -15,11 +15,16 @@ package CI is fully self-contained.
 
 ## Contract version
 
-**Hub Agent Contract v1.1.0.** The `archives` and `backup-runs` shapes carry the
-additive split-backup discriminator `kind ∈ {database, files}` (ADR-0007
-Addendum F), which bumps the base v1.0.0 contract to v1.1.0 (additive only).
-The per-file `_contract.hub_agent_contract_version` headers were frozen at
-`1.0.0` before Addendum F; the additive `kind` field is the only delta.
+**Hub Agent Contract v1.2.0.** History:
+
+- **v1.1.0** — `archives` + `backup-runs` carry the additive split-backup
+  discriminator `kind ∈ {database, files}` (ADR-0007 Addendum F).
+- **v1.2.0** — the enrollment-exchange ships (ADR-0007 Addendum D): `register`
+  returns a `data.runtime_token` block (durable runtime PAT, abilities
+  `app:backup`/`app:heartbeat`/`app:restore`) and single-use-consumes the
+  enrollment token; `agent-tokens` mints an enrollment-only token + `expires_at`.
+  See `register.success.with-runtime-token.planned.json` and
+  `agent-tokens.success.json` (both now `shipped`, `_contract` headers `1.2.0`).
 
 ## Status legend (from the source README)
 

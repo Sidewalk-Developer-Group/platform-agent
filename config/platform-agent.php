@@ -99,6 +99,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Credential store (durable runtime PAT — encrypted at rest)
+    |--------------------------------------------------------------------------
+    |
+    | Where the durable RUNTIME PAT lives after the enrollment -> runtime
+    | exchange (ADR-0007 Addendum D). It is encrypted with the customer app's
+    | APP_KEY (Laravel Crypt) and stored in the customer DB — NEVER written back
+    | to `.env`. The enrollment token (PLATFORM_TOKEN) stays in config; only the
+    | durable runtime token uses this store.
+    |
+    | `connection`  DB connection name (null = the app's default connection).
+    | `table`       Table name the package migration creates.
+    |
+    */
+
+    'store' => [
+        'connection' => env('PLATFORM_STORE_CONNECTION'),
+        'table' => env('PLATFORM_STORE_TABLE', 'platform_agent_credentials'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Backup (PLACEHOLDER — no behavior until PA3)
     |--------------------------------------------------------------------------
     |
@@ -158,7 +179,7 @@ return [
     */
 
     'compatibility' => [
-        'min_hub_contract_version' => '1.1.0',
+        'min_hub_contract_version' => '1.2.0',
     ],
 
 ];
