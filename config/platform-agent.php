@@ -78,7 +78,7 @@ return [
     |
     */
 
-    'agent_version' => '0.1.0-dev',
+    'agent_version' => '1.0.0',
 
     /*
     |--------------------------------------------------------------------------
@@ -190,6 +190,49 @@ return [
     'restore' => [
         'default_location' => env('PLATFORM_RESTORE_LOCATION'),
         'download_timeout' => (int) env('PLATFORM_RESTORE_DOWNLOAD_TIMEOUT', 600),
+
+        /*
+        |----------------------------------------------------------------------
+        | Restore discovery push (Reverb/Pusher — latency follow-up to polling)
+        |----------------------------------------------------------------------
+        |
+        | `platform-agent:listen` keeps a long-lived Reverb/Pusher (Pusher
+        | protocol) subscription to the Hub's per-Application private channel and
+        | drains approved restore jobs the instant the Hub broadcasts, instead of
+        | waiting for the next poll (ADR-0007 Addendum B.5 / ADR-0011). Polling is
+        | the Rule-6 fallback and is NEVER removed: `:listen` runs a poll sweep on
+        | startup and again every `poll_fallback_seconds` of idleness, and the
+        | scheduled `platform-agent:restore` poll stays wired regardless.
+        |
+        | `enabled`               Master switch. Off (default) = poll-only.
+        | `key`                   The Hub's broadcaster app key (Reverb/Pusher).
+        | `host`/`port`/`scheme`  WebSocket endpoint; host defaults to the Hub host.
+        | `channel`               Private channel template; "{application}" is
+        |                         replaced with the bound Application UUID. The Hub
+        |                         authorizes by the runtime PAT's `app:restore`
+        |                         ability + token-bound Application (never trusts a
+        |                         client-supplied id).
+        | `event`                 Broadcast event name that signals "drain now".
+        | `poll_fallback_seconds` Idle interval after which a safety poll sweep
+        |                         runs even without a push (Rule 6).
+        | `connect_timeout`       WebSocket connect/handshake timeout (seconds).
+        |
+        | The authoritative restore action ALWAYS routes through the same
+        | manifest → pull → SHA256 verify (Rule 4) → non-destructive deposit →
+        | report path as the poll command; the push only changes WHEN it runs.
+        |
+        */
+        'push' => [
+            'enabled' => (bool) env('PLATFORM_RESTORE_PUSH_ENABLED', false),
+            'key' => env('PLATFORM_RESTORE_PUSH_KEY'),
+            'host' => env('PLATFORM_RESTORE_PUSH_HOST'),
+            'port' => (int) env('PLATFORM_RESTORE_PUSH_PORT', 443),
+            'scheme' => env('PLATFORM_RESTORE_PUSH_SCHEME', 'https'),
+            'channel' => env('PLATFORM_RESTORE_PUSH_CHANNEL', 'applications.{application}'),
+            'event' => env('PLATFORM_RESTORE_PUSH_EVENT', 'restore.requested'),
+            'poll_fallback_seconds' => (int) env('PLATFORM_RESTORE_PUSH_POLL_SECONDS', 300),
+            'connect_timeout' => (int) env('PLATFORM_RESTORE_PUSH_CONNECT_TIMEOUT', 15),
+        ],
     ],
 
     /*

@@ -181,6 +181,50 @@ class PlatformClient
     }
 
     /**
+     * POST /api/v1/agent/broadcasting/auth (ability app:restore) — authorize the
+     * agent's subscription to its per-Application private restore channel for the
+     * restore-push subscriber (PA5 / ADR-0007 Addendum B.5). The Hub authorizes
+     * by the runtime PAT's bound Application — the channel id is never trusted
+     * from the client. Returns the decoded body so BOTH the canonical envelope
+     * (`data.auth`) and a raw Pusher auth shape (`{"auth": "..."}`) are accepted.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastingAuth(string $channelName, string $socketId): array
+    {
+        $response = $this->request($this->runtimeBearer())
+            ->post('agent/broadcasting/auth', [
+                'channel_name' => $channelName,
+                'socket_id' => $socketId,
+            ]);
+
+        if ($response->status() === 426) {
+            $message = $this->extractMessage($response, 'Platform Agent upgrade required.');
+
+            $this->logger?->error('platform-agent.upgrade_required', [
+                'endpoint' => 'agent/broadcasting/auth',
+                'status' => 426,
+                'message' => $message,
+            ]);
+
+            throw new AgentUpgradeRequiredException($message, 'agent/broadcasting/auth');
+        }
+
+        if ($response->failed()) {
+            $this->logger?->warning('platform-agent.channel_auth_failed', [
+                'channel' => $channelName,
+                'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $body = $response->json();
+
+        return is_array($body) ? $body : [];
+    }
+
+    /**
      * Issue a JSON request and return the parsed envelope, applying the 426 and
      * version_warning rules. Public so PA2+ command/service code can reach the
      * shipped endpoints not yet wrapped by a dedicated method above.

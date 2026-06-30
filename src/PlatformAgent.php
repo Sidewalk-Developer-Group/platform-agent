@@ -54,5 +54,16 @@ final class PlatformAgent
         $schedule->command('platform-agent:backup --kind=files')
             ->cron((string) Arr::get($config, 'backup.kinds.files.cadence', '0 2 * * *'))
             ->withoutOverlapping();
+
+        // Rule 6: the restore poll fallback is ALWAYS wired — independent of the
+        // optional `platform-agent:listen` push daemon (PA5). A `--once` sweep
+        // drains any approved restore job to the configured deposit location.
+        // Only scheduled when a default location exists (the command needs one).
+        if ((string) Arr::get($config, 'restore.default_location', '') !== '') {
+            $schedule->command('platform-agent:listen --once')
+                ->everyFiveMinutes()
+                ->withoutOverlapping()
+                ->runInBackground();
+        }
     }
 }

@@ -11,6 +11,46 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.0.0] - 2026-07-01
+
+First **public Packagist** release (ADR-0007 Addendum B.4). Ships the full PA0–PA5
+track: HTTP client + contract pin, enrollment-exchange onboarding, register +
+heartbeat/report, split backup → checksum → resumable upload + run-log, agent-PULL
+restore, and the restore-discovery push listener. SemVer starts at `1.0.0`; this
+version IS the `agent_version` reported on the wire (ADR-0007 §2.9).
+
+### Added (PA5 — hardening + restore-discovery push + Packagist release)
+
+- **`platform-agent:listen`** — long-lived **Reverb/Pusher restore-discovery push**
+  (ADR-0007 Addendum B.5). Holds a subscription to the Hub's per-Application
+  PRIVATE restore channel and **drains approved restore jobs the instant the Hub
+  broadcasts**, instead of waiting for the next poll. Polling stays the Rule-6
+  fallback and is **never removed**: a poll sweep runs on startup, on every idle
+  tick (`poll_fallback_seconds`), and on any disconnect; `--once` runs a single
+  poll sweep and exits (and is the scheduled fallback entry). With
+  `restore.push.enabled=false` the command is poll-only.
+- **Pusher-protocol stack** — `PusherRestoreSubscriber` over a `WebSocketConnector`
+  seam with a dependency-free native-stream `StreamWebSocketConnector`
+  (RFC 6455 via the pure, unit-tested `PusherFrame`). Channel subscription is
+  authorized by `PlatformClient::broadcastingAuth()` →
+  `POST /api/v1/agent/broadcasting/auth` (runtime PAT; the Hub binds the channel
+  to the token's Application — the channel id is never trusted from the client).
+- **`RestoreCoordinator`** — shared drain path: every downloadable restore job
+  routes through the SAME `ArchiveRestorer` pull → SHA256 verify (Rule 4) →
+  non-destructive deposit → report pipeline as `platform-agent:restore`, so a
+  push-driven restore is byte-identical to a polled one and **no failure is
+  silent**. A 426 aborts the whole sweep (upgrade-required hard block).
+- **Schedule macro** now also wires the Rule-6 restore poll (`:listen --once`,
+  every 5 min) whenever `restore.default_location` is set — independent of the
+  push daemon.
+- Hardening: security + observability review (`SECURITY.md`) — **PAT-only auth**
+  (no FTP/shared/anon), **secrets never logged**, **no silent failures**.
+- CI: a **tag-triggered release workflow** (`release.yml`) validates the package,
+  runs the full matrix, publishes a GitHub Release and pings the Packagist
+  update webhook on `v*` SemVer tags.
+
 ### Added (PA4 — restore: agent PULL → verify → deposit)
 
 - **`platform-agent:restore {location}`** — agent-PULL restore (ADR-0011). Discovers
@@ -29,8 +69,9 @@ split-backup `kind` baseline — Addendum F).
   surfaces as an upgrade error (never swallowed into a reportable failure).
 - **`PlatformClient`** gains `restoreJobs()`, `restoreManifest()`, `reportRestore()`
   and a memory-safe `downloadArchive()` (streams to a sink for GB-scale archives).
-- The **Laravel Echo push subscriber is intentionally DEFERRED** to a latency
-  follow-up — polling is the Rule-6 fallback and is never removed.
+- The Laravel Echo / Reverb push subscriber was deferred from PA4 to the PA5
+  latency follow-up — now shipped as `platform-agent:listen` (see [1.0.0] above);
+  polling remains the Rule-6 fallback and is never removed.
 
 ### Added (PA2 — register + heartbeat/report + schedule macro)
 
@@ -86,4 +127,5 @@ split-backup `kind` baseline — Addendum F).
 - Pinned Hub Agent Contract fixtures + Pest suite (envelope parsing, version
   warning, 426 handling) + GitHub Actions CI on PHP 8.2/8.3/8.4.
 
-[Unreleased]: https://github.com/sidewalkdevelopers/platform-agent
+[Unreleased]: https://github.com/Sidewalk-Developer-Group/platform-agent/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Sidewalk-Developer-Group/platform-agent/releases/tag/v1.0.0

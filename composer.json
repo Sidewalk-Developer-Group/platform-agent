@@ -4,11 +4,11 @@
     "keywords": ["laravel", "backup", "disaster-recovery", "agent", "sidewalk-developers", "platform-agent"],
     "type": "library",
     "license": "MIT",
-    "homepage": "https://github.com/sidewalkdevelopers/platform-agent",
+    "homepage": "https://github.com/Sidewalk-Developer-Group/platform-agent",
     "authors": [
         {
             "name": "Sidewalk Developers Group",
-            "homepage": "https://sidewalkdevelopers.com"
+            "homepage": "https://sidewalkdevelopers.io"
         }
     ],
     "require": {

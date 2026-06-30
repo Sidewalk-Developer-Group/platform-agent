@@ -1,0 +1,109 @@
+name: Release
+
+# SemVer-tagged release to public Packagist (ADR-0007 Addendum B.4 / PA5).
+# Push a tag like `v1.0.0` to: validate the package, run the full test matrix,
+# publish a GitHub Release (notes pulled from CHANGELOG.md), and notify Packagist.
+#
+# Required repo secrets for the Packagist ping (optional — skipped if unset; a
+# Packagist GitHub webhook also keeps the package in sync):
+#   PACKAGIST_USERNAME, PACKAGIST_TOKEN
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Pest (PHP ${{ matrix.php }}, ${{ matrix.dependency-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+        dependency-version: [prefer-lowest, prefer-stable]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, fileinfo, zip
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
+
+      - name: Install dependencies
+        run: |
+          composer update --${{ matrix.dependency-version }} \
+            --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests
+        run: vendor/bin/pest --ci
+
+  guard-version:
+    name: Tag matches agent_version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assert config agent_version == tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          # The config file calls env() so it can't be require()d standalone —
+          # read the literal default directly.
+          CFG=$(grep -oE "'agent_version' => '[^']+'" config/platform-agent.php | head -1 | sed -E "s/.*'agent_version' => '([^']+)'.*/\1/")
+          echo "tag=$TAG config agent_version=$CFG"
+          if [ "$TAG" != "$CFG" ]; then
+            echo "::error::Tag ($TAG) does not match config agent_version ($CFG). The published version IS the agent_version (ADR-0007 §2.9)."
+            exit 1
+          fi
+
+  release:
+    name: GitHub Release + Packagist
+    needs: [test, guard-version]
+    runs-on: ubuntu-latest
+    env:
+      PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog notes for this tag
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Lines between "## [VERSION]" and the next "## [" heading.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" {grab=1; next}
+            grab && /^## \[/ {exit}
+            grab {print}
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release $VERSION" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Notify Packagist
+        if: ${{ env.PACKAGIST_USERNAME != '' && env.PACKAGIST_TOKEN != '' }}
+        run: |
+          curl -sf -XPOST -H 'content-type:application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -d '{"repository":{"url":"https://github.com/Sidewalk-Developer-Group/platform-agent"}}' \
+            && echo "Packagist notified." \
+            || echo "Packagist ping failed (webhook may still sync)."

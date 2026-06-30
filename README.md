@@ -1,5 +1,9 @@
 # Platform Agent
 
+[![CI](https://github.com/Sidewalk-Developer-Group/platform-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Sidewalk-Developer-Group/platform-agent/actions/workflows/ci.yml)
+[![Latest Version](https://img.shields.io/packagist/v/sidewalkdevelopers/platform-agent.svg)](https://packagist.org/packages/sidewalkdevelopers/platform-agent)
+[![License](https://img.shields.io/packagist/l/sidewalkdevelopers/platform-agent.svg)](LICENSE)
+
 The official **Sidewalk Developers Group Platform Agent** — the near-zero-code
 integration package that connects a customer Laravel application to the
 **Distributed Backup Orchestration Platform** (the Cloud Hub).
@@ -9,11 +13,12 @@ logic so the customer writes near-zero code: backup creation (database + files,
 split), SHA256 checksum generation, resumable archive upload, heartbeats, health
 and version reporting, and agent-pull restore.
 
-> Status: **PA2 (register + heartbeat/report + schedule macro)**. The HTTP
-> client, config, contract tests, encrypted credential store, `install` +
-> `diagnose` (PA1), and now `register` / `heartbeat` / `report` plus the
-> `PlatformAgent::schedule()` wiring are live. `backup` (PA3) and `restore` (PA4)
-> land next (see `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN §11a).
+> Status: **1.0.0 — full PA0–PA5 track shipped** (first public Packagist release).
+> Onboarding (`install`/`diagnose`), `register`/`heartbeat`/`report`, the
+> `PlatformAgent::schedule()` wiring, split backup → checksum → resumable upload +
+> run-log, agent-PULL `restore`, and the optional Reverb/Pusher restore-discovery
+> push `listen` are all live. Minimum Hub Agent Contract: **v1.2.0**. See
+> `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN §11a.
 
 ## Requirements
 
@@ -65,6 +70,7 @@ hardcoded.
 | `platform-agent:report` | Richer health/version/environment report | PA2 |
 | `platform-agent:backup --kind=database\|files` | Split backup → checksum → upload | PA3 |
 | `platform-agent:restore {location}` | Agent-PULL restore: pull → verify SHA256 (Rule 4) → deposit `backup.zip` + sidecar at {location} (non-destructive; `--job=<id>` to pick among many) | PA4 |
+| `platform-agent:listen {location?}` | Subscribe to Hub restore broadcasts and drain approved jobs instantly; poll fallback always on (`--once` = single poll sweep) | PA5 |
 
 ## Scheduling
 
@@ -81,6 +87,37 @@ It registers the heartbeat (every 5 min — Rule 2), an hourly report, and both
 split backups (`--kind=database` / `--kind=files`) on their configured cadences
 (`config/platform-agent.php` → `backup.kinds.*.cadence`). Backup execution lands
 at PA3; the schedule entries are wired now so onboarding stays near-zero-code.
+
+## Restore-discovery push (optional, latency follow-up)
+
+By default the agent **polls** for approved restore jobs (Rule 6). For lower
+latency, `platform-agent:listen` keeps a long-lived **Reverb/Pusher** subscription
+to the Hub's per-Application **private** restore channel and drains a restore the
+instant the Hub broadcasts. **Polling is never removed** — `:listen` runs a poll
+sweep on startup, on every idle tick, and on any disconnect, and the scheduled
+`:listen --once` fallback stays wired regardless.
+
+```env
+PLATFORM_RESTORE_LOCATION=/var/backups/restore   # deposit dir (also enables the scheduled poll)
+PLATFORM_RESTORE_PUSH_ENABLED=true               # opt in to the live push daemon
+PLATFORM_RESTORE_PUSH_KEY=                        # Hub broadcaster (Reverb/Pusher) app key
+PLATFORM_RESTORE_PUSH_HOST=                       # defaults to the Hub host
+PLATFORM_RESTORE_PUSH_PORT=443
+```
+
+Run the daemon under a process supervisor (systemd / supervisor):
+
+```bash
+php artisan platform-agent:listen
+```
+
+The push only changes **when** a restore runs; the authoritative action is always
+the same manifest → pull → SHA256 verify (Rule 4) → non-destructive deposit →
+report path as the poll command. Channel subscription is authorized by the runtime
+PAT via `POST /api/v1/agent/broadcasting/auth`; the Hub binds the channel to the
+token's Application (the channel id is never trusted from the client). The
+transport is dependency-free (native PHP streams, RFC 6455) — no WebSocket library
+is added to your app.
 
 ## Dev-environment upload limits (setup note)
 

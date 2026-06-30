@@ -20,10 +20,16 @@ use SidewalkDevelopers\PlatformAgent\Http\TusUploadClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\BackupRunReporter;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
 use SidewalkDevelopers\PlatformAgent\Restore\ArchiveRestorer;
+use SidewalkDevelopers\PlatformAgent\Restore\RestoreCoordinator;
+use SidewalkDevelopers\PlatformAgent\Restore\Push\PusherRestoreSubscriber;
+use SidewalkDevelopers\PlatformAgent\Restore\Push\RestorePushSubscriber;
+use SidewalkDevelopers\PlatformAgent\Restore\Push\StreamWebSocketConnector;
+use SidewalkDevelopers\PlatformAgent\Restore\Push\WebSocketConnector;
 use SidewalkDevelopers\PlatformAgent\Console\BackupCommand;
 use SidewalkDevelopers\PlatformAgent\Console\DiagnoseCommand;
 use SidewalkDevelopers\PlatformAgent\Console\HeartbeatCommand;
 use SidewalkDevelopers\PlatformAgent\Console\InstallCommand;
+use SidewalkDevelopers\PlatformAgent\Console\ListenCommand;
 use SidewalkDevelopers\PlatformAgent\Console\RegisterCommand;
 use SidewalkDevelopers\PlatformAgent\Console\ReportCommand;
 use SidewalkDevelopers\PlatformAgent\Console\RestoreCommand;
@@ -129,6 +135,31 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
             );
         });
+
+        // Drains every downloadable restore job through the same pull/verify/
+        // deposit/report path — shared by the poll sweep and the push listener.
+        $this->app->singleton(RestoreCoordinator::class, static function ($app): RestoreCoordinator {
+            return new RestoreCoordinator(
+                client: $app->make(PlatformClient::class),
+                restorer: $app->make(ArchiveRestorer::class),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
+
+        // Restore-discovery push (PA5 / ADR-0007 Addendum B.5). Native-stream
+        // WebSocket transport (no extra dep) behind the connector seam; the
+        // Pusher-protocol subscriber authorizes the per-Application private
+        // channel via the Hub. Poll remains the never-removed Rule-6 fallback.
+        $this->app->bind(WebSocketConnector::class, StreamWebSocketConnector::class);
+
+        $this->app->bind(RestorePushSubscriber::class, static function ($app): RestorePushSubscriber {
+            return new PusherRestoreSubscriber(
+                connector: $app->make(WebSocketConnector::class),
+                client: $app->make(PlatformClient::class),
+                config: (array) $app['config']->get('platform-agent', []),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
     }
 
     public function boot(): void
@@ -154,6 +185,7 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 ReportCommand::class,
                 BackupCommand::class,
                 RestoreCommand::class,
+                ListenCommand::class,
             ]);
         }
     }
@@ -172,6 +204,9 @@ final class PlatformAgentServiceProvider extends ServiceProvider
             BackupRunReporter::class,
             BackupRunner::class,
             ArchiveRestorer::class,
+            RestoreCoordinator::class,
+            WebSocketConnector::class,
+            RestorePushSubscriber::class,
         ];
     }
 }
