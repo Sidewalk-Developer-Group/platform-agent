@@ -4,22 +4,38 @@ declare(strict_types=1);
 
 namespace SidewalkDevelopers\PlatformAgent\Console;
 
+use SidewalkDevelopers\PlatformAgent\Console\Concerns\ReportsAgentTelemetry;
+use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
+use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
+use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
+
 /**
  * `platform-agent:heartbeat` — frequent liveness ping (PA2).
  *
- * POST /api/v1/agent/heartbeat (ability app:heartbeat). Reports bytes only
- * (Rule 1) — never a usage percentage.
+ * POST /api/v1/agent/heartbeat (ability app:heartbeat). The lean, every-5-minute
+ * beat (Rule 2). Bytes only (Rule 1) — the snapshot NEVER carries a usage
+ * percentage; storage_usage_bytes is sent only once the backup subsystem (PA3)
+ * can supply a real value. Soft version_warning => warn + continue; HTTP 426 =>
+ * hard upgrade block.
  */
 final class HeartbeatCommand extends AbstractAgentCommand
 {
+    use ReportsAgentTelemetry;
+
     protected $signature = 'platform-agent:heartbeat';
 
     protected $description = 'Send a liveness heartbeat to the Cloud Hub.';
 
     protected string $implementedInPhase = 'PA2';
 
-    public function handle(): int
+    public function handle(PlatformClient $client, CredentialStore $credentials, EnvironmentReporter $env): int
     {
-        return $this->notImplemented();
+        if (! $this->requireRuntimeToken($credentials)) {
+            return self::FAILURE;
+        }
+
+        $payload = $env->snapshot('healthy', ['trigger' => 'heartbeat']);
+
+        return $this->sendTelemetry(fn () => $client->heartbeat($payload), 'Heartbeat');
     }
 }

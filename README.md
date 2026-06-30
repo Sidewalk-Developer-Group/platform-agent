@@ -9,11 +9,11 @@ logic so the customer writes near-zero code: backup creation (database + files,
 split), SHA256 checksum generation, resumable archive upload, heartbeats, health
 and version reporting, and agent-pull restore.
 
-> Status: **PA1 (install + onboarding)**. The HTTP client, config, contract
-> tests, the encrypted credential store, and the `install` + `diagnose` commands
-> are live. `register` / `heartbeat` / `report` (PA2), `backup` (PA3) and
-> `restore` (PA4) land next (see `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN
-> §11a).
+> Status: **PA2 (register + heartbeat/report + schedule macro)**. The HTTP
+> client, config, contract tests, encrypted credential store, `install` +
+> `diagnose` (PA1), and now `register` / `heartbeat` / `report` plus the
+> `PlatformAgent::schedule()` wiring are live. `backup` (PA3) and `restore` (PA4)
+> land next (see `CHANGELOG.md` and ADR-0007 §11a / BUILD_PLAN §11a).
 
 ## Requirements
 
@@ -65,6 +65,22 @@ hardcoded.
 | `platform-agent:report` | Richer health/version/environment report | PA2 |
 | `platform-agent:backup --kind=database\|files` | Split backup → checksum → upload | PA3 |
 | `platform-agent:restore {location}` | Agent-PULL restore (verify SHA256 before restoring) | PA4 |
+
+## Scheduling
+
+Wire the agent's recurring work with a single line in `routes/console.php`:
+
+```php
+use Illuminate\Console\Scheduling\Schedule;
+use SidewalkDevelopers\PlatformAgent\PlatformAgent;
+
+PlatformAgent::schedule(app(Schedule::class));
+```
+
+It registers the heartbeat (every 5 min — Rule 2), an hourly report, and both
+split backups (`--kind=database` / `--kind=files`) on their configured cadences
+(`config/platform-agent.php` → `backup.kinds.*.cadence`). Backup execution lands
+at PA3; the schedule entries are wired now so onboarding stays near-zero-code.
 
 ## Dev-environment upload limits (setup note)
 

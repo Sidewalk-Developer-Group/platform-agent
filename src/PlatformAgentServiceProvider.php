@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace SidewalkDevelopers\PlatformAgent;
 
 use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
+use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
 use SidewalkDevelopers\PlatformAgent\Console\BackupCommand;
 use SidewalkDevelopers\PlatformAgent\Console\DiagnoseCommand;
 use SidewalkDevelopers\PlatformAgent\Console\HeartbeatCommand;
@@ -50,6 +52,15 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 db: $app->make(ConnectionResolverInterface::class),
                 crypt: $app->make(Encrypter::class),
                 logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
+
+        // Single source of the environment facts reported on register / heartbeat
+        // / report (PA2). Shared so all surfaces report identical derived values.
+        $this->app->singleton(EnvironmentReporter::class, static function ($app): EnvironmentReporter {
+            return new EnvironmentReporter(
+                app: $app->make(Application::class),
+                config: (array) $app['config']->get('platform-agent', []),
             );
         });
 
@@ -97,6 +108,7 @@ final class PlatformAgentServiceProvider extends ServiceProvider
     {
         return [
             CredentialStore::class,
+            EnvironmentReporter::class,
             PlatformClient::class,
         ];
     }

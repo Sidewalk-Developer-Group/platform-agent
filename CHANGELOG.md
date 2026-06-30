@@ -11,6 +11,26 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
+### Added (PA2 — register + heartbeat/report + schedule macro)
+
+- **`platform-agent:register`** — explicit re-pair over the enrollment exchange;
+  rotates the runtime PAT using a fresh operator-minted enrollment token. Soft
+  `version_warning` continues; HTTP 426 hard-blocks. Shares the exchange with
+  `:install` via the `RunsEnrollmentExchange` concern.
+- **`platform-agent:heartbeat`** — frequent (every-5-min, Rule 2) liveness ping
+  to `POST /api/v1/agent/heartbeat`. **Bytes-only (Rule 1)** — the payload never
+  carries a usage percentage. WARN-and-continue on soft version lag; hard-block
+  on 426; fails fast if not yet enrolled.
+- **`platform-agent:report`** — richer, less-frequent health/version/environment
+  telemetry to `POST /api/v1/agent/report` with a `--status`
+  (healthy|degraded|unreachable). Same bytes-only + version rules.
+- **`EnvironmentReporter`** — single source of the reported environment facts
+  (agent/php/framework version, host, stable sha256 fingerprint, OS), shared by
+  register and heartbeat/report so all surfaces report identical derived values.
+- **`PlatformAgent::schedule($schedule)`** — one-line schedule wiring: heartbeat
+  (every 5 min), hourly report, and both split backups (`--kind=database` /
+  `--kind=files`) on their configured cadences.
+
 ### Added (PA1 — install + onboarding)
 
 - **Encrypted DB-backed `CredentialStore`** (`DatabaseCredentialStore`) — persists

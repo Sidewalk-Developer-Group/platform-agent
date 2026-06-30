@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace SidewalkDevelopers\PlatformAgent\Console;
 
-use Illuminate\Http\Client\ConnectionException;
+use SidewalkDevelopers\PlatformAgent\Console\Concerns\RunsEnrollmentExchange;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
-use SidewalkDevelopers\PlatformAgent\Exceptions\AgentUpgradeRequiredException;
-use SidewalkDevelopers\PlatformAgent\Exceptions\MissingCredentialException;
-use SidewalkDevelopers\PlatformAgent\Http\AgentResponse;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
+use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
 
 /**
  * `platform-agent:install` — near-zero-code onboarding (PA1).
@@ -18,9 +16,15 @@ use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
  * PAT exchange via POST /api/v1/agent/register, persists the runtime PAT
  * ENCRYPTED in the customer DB (never `.env`), prints a schedule-wiring hint, and
  * fails loudly on connectivity/auth/upgrade errors (ADR-0007 §2.3 / Addendum D).
+ *
+ * The enrollment exchange itself is shared with `platform-agent:register` via
+ * {@see RunsEnrollmentExchange}; the wire payload comes from the shared
+ * {@see EnvironmentReporter} (PA2).
  */
 final class InstallCommand extends AbstractAgentCommand
 {
+    use RunsEnrollmentExchange;
+
     protected $signature = 'platform-agent:install
         {--force : Overwrite an existing published config}';
 
@@ -28,7 +32,7 @@ final class InstallCommand extends AbstractAgentCommand
 
     protected string $implementedInPhase = 'PA1';
 
-    public function handle(PlatformClient $client, CredentialStore $credentials): int
+    public function handle(PlatformClient $client, CredentialStore $credentials, EnvironmentReporter $env): int
     {
         $this->components->info('Onboarding this application to the Cloud Hub.');
 
@@ -45,13 +49,23 @@ final class InstallCommand extends AbstractAgentCommand
             );
         }
 
-        $result = $this->enroll($client);
+        $result = $this->runEnrollment($client, $env);
 
         if ($result === null) {
             return self::FAILURE;
         }
 
-        return $this->persistRuntimeToken($result, $credentials);
+        if (! $this->persistRuntimeToken($result, $credentials)) {
+            return self::FAILURE;
+        }
+
+        $this->components->task('Stored runtime token (encrypted) in the application database');
+        $this->components->info('Onboarding complete. This application is now paired with the Cloud Hub.');
+
+        $this->printScheduleHint();
+        $this->printDiscardEnrollmentHint();
+
+        return self::SUCCESS;
     }
 
     private function publishConfig(): void
@@ -90,132 +104,13 @@ final class InstallCommand extends AbstractAgentCommand
         return $ok;
     }
 
-    private function enroll(PlatformClient $client): ?AgentResponse
-    {
-        try {
-            $result = $client->register($this->registerPayload());
-        } catch (AgentUpgradeRequiredException $e) {
-            $this->components->error('Platform Agent upgrade required: '.$e->getMessage());
-            $this->line('  Upgrade the package (composer update sidewalkdevelopers/platform-agent) and re-run install.');
-
-            return null;
-        } catch (ConnectionException $e) {
-            $this->components->error('Could not reach the Cloud Hub at '.config('platform-agent.url').': '.$e->getMessage());
-
-            return null;
-        } catch (MissingCredentialException $e) {
-            $this->components->error($e->getMessage());
-
-            return null;
-        }
-
-        if ($result->failed()) {
-            $this->components->error('Enrollment failed ('.$result->status.'): '.($result->message ?? 'unknown error'));
-
-            if ($result->status === 401) {
-                $this->line('  The enrollment token is invalid or already consumed. Ask your operator to mint a fresh one.');
-            }
-
-            foreach (($result->errors ?? []) as $field => $messages) {
-                foreach ((array) $messages as $message) {
-                    $this->line("  - {$field}: {$message}");
-                }
-            }
-
-            return null;
-        }
-
-        if ($result->hasVersionWarning()) {
-            $this->components->warn('Version notice (backups continue): '.$result->versionWarning);
-        }
-
-        $this->verifyApplicationMatch($result);
-
-        return $result;
-    }
-
-    private function persistRuntimeToken(AgentResponse $result, CredentialStore $credentials): int
-    {
-        $runtime = $result->runtimeToken();
-
-        if ($runtime === null || blank($runtime['token'] ?? null)) {
-            $this->components->error(
-                'The Hub did not return a runtime token. Ensure the Hub Agent Contract is v1.2.0+ (enrollment-exchange).'
-            );
-
-            return self::FAILURE;
-        }
-
-        $credentials->putRuntimeToken((string) $runtime['token'], [
-            'token_id' => $runtime['token_id'] ?? null,
-            'abilities' => $runtime['abilities'] ?? [],
-            'expires_at' => $runtime['expires_at'] ?? null,
-            'application_uuid' => config('platform-agent.application_uuid'),
-        ]);
-
-        $this->components->task('Stored runtime token (encrypted) in the application database');
-        $this->components->info('Onboarding complete. This application is now paired with the Cloud Hub.');
-
-        $this->printScheduleHint();
-        $this->printDiscardEnrollmentHint();
-
-        return self::SUCCESS;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function registerPayload(): array
-    {
-        $hostname = gethostname() ?: 'unknown-host';
-
-        return [
-            'agent_version' => (string) config('platform-agent.agent_version'),
-            'hostname' => $hostname,
-            'fingerprint' => $this->fingerprint($hostname),
-            'metadata' => [
-                'os' => trim(php_uname('s').' '.php_uname('r')),
-                'php' => PHP_VERSION,
-            ],
-        ];
-    }
-
-    private function fingerprint(string $hostname): string
-    {
-        // Stable per-install pairing key so a re-install updates the same
-        // agent_registration row (idempotency on (application_id, fingerprint)).
-        $seed = implode('|', [
-            (string) config('platform-agent.application_uuid'),
-            $hostname,
-            base_path(),
-        ]);
-
-        return 'sha256:'.hash('sha256', $seed);
-    }
-
-    private function verifyApplicationMatch(AgentResponse $result): void
-    {
-        $bound = $result->get('registration.application_id');
-        $configured = config('platform-agent.application_uuid');
-
-        if ($bound !== null && $configured !== null && $bound !== $configured) {
-            $this->components->warn(sprintf(
-                'PLATFORM_APPLICATION_UUID (%s) does not match the token-bound Application (%s). '
-                .'Identity is the token-bound Application; double-check your config.',
-                $configured,
-                $bound,
-            ));
-        }
-    }
-
     private function printScheduleHint(): void
     {
         $this->newLine();
-        $this->line('  Next: schedule the agent (heartbeat + split backups) in routes/console.php.');
-        $this->line('  A one-line PlatformAgent::schedule($schedule) macro ships with PA2; until then wire:');
-        $this->line('    Schedule::command(\'platform-agent:heartbeat\')->everyFiveMinutes();');
-        $this->line('    Schedule::command(\'platform-agent:backup --kind=database\')->cron(config(\'platform-agent.backup.kinds.database.cadence\'));');
-        $this->line('    Schedule::command(\'platform-agent:backup --kind=files\')->cron(config(\'platform-agent.backup.kinds.files.cadence\'));');
+        $this->line('  Next: wire the agent schedule in routes/console.php with one line —');
+        $this->line('    use SidewalkDevelopers\\PlatformAgent\\PlatformAgent;');
+        $this->line('    PlatformAgent::schedule(app(\\Illuminate\\Console\\Scheduling\\Schedule::class));');
+        $this->line('  It registers the heartbeat (every 5 min), the hourly report, and both split backups.');
     }
 
     private function printDiscardEnrollmentHint(): void
