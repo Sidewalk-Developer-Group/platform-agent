@@ -168,6 +168,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Restore (agent-PULL — PA4 / ADR-0011)
+    |--------------------------------------------------------------------------
+    |
+    | `platform-agent:restore {location}` pulls an approved restore job's archive
+    | from the Hub, VERIFIES its SHA256 (Rule 4) and DEPOSITS the verified
+    | `backup.zip` + a `.sha256` sidecar at the target location. It is
+    | NON-DESTRUCTIVE — the operator/customer applies the deposited archive; the
+    | agent never extracts or imports it (ADR-0011 §4).
+    |
+    | `default_location`  Where to deposit when the command is run with no
+    |                     {location} argument (e.g. a scheduled poll). A
+    |                     directory → the archive lands as "{dir}/{filename}"; a
+    |                     full path → used verbatim. Null = the argument is
+    |                     required.
+    | `download_timeout`  Seconds for the (potentially large) byte pull; separate
+    |                     from the short JSON `http.timeout`.
+    |
+    */
+
+    'restore' => [
+        'default_location' => env('PLATFORM_RESTORE_LOCATION'),
+        'download_timeout' => (int) env('PLATFORM_RESTORE_DOWNLOAD_TIMEOUT', 600),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Compatibility (PLACEHOLDER — informational only)
     |--------------------------------------------------------------------------
     |

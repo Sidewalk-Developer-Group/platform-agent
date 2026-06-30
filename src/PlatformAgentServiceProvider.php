@@ -19,6 +19,7 @@ use SidewalkDevelopers\PlatformAgent\Backup\SpatieBackupRunner;
 use SidewalkDevelopers\PlatformAgent\Http\TusUploadClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\BackupRunReporter;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
+use SidewalkDevelopers\PlatformAgent\Restore\ArchiveRestorer;
 use SidewalkDevelopers\PlatformAgent\Console\BackupCommand;
 use SidewalkDevelopers\PlatformAgent\Console\DiagnoseCommand;
 use SidewalkDevelopers\PlatformAgent\Console\HeartbeatCommand;
@@ -117,6 +118,17 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 config: $app->make(ConfigRepository::class),
             );
         });
+
+        // --- Restore subsystem (PA4 / ADR-0011) ---------------------------
+
+        // Manifest → byte download → SHA256 verify (Rule 4) → non-destructive
+        // deposit. The Hub never pushes; the agent pulls + verifies + deposits.
+        $this->app->singleton(ArchiveRestorer::class, static function ($app): ArchiveRestorer {
+            return new ArchiveRestorer(
+                client: $app->make(PlatformClient::class),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
     }
 
     public function boot(): void
@@ -159,6 +171,7 @@ final class PlatformAgentServiceProvider extends ServiceProvider
             ArchiveUploader::class,
             BackupRunReporter::class,
             BackupRunner::class,
+            ArchiveRestorer::class,
         ];
     }
 }

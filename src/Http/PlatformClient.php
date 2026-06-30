@@ -111,6 +111,76 @@ class PlatformClient
     }
 
     /**
+     * GET /api/v1/agent/restore-jobs (ability app:restore) — discover the
+     * Application's downloadable restore jobs (poll fallback, Rule 6; PA4).
+     */
+    public function restoreJobs(): AgentResponse
+    {
+        return $this->send('get', 'agent/restore-jobs', [], $this->runtimeBearer());
+    }
+
+    /**
+     * GET /api/v1/agent/restore-jobs/{id}/download (ability app:restore) — the
+     * NON-MUTATING manifest: archive filename + sha256 (Rule 4) + size + a signed
+     * byte-egress `download_url` (ADR-0011; PA4).
+     */
+    public function restoreManifest(string $restoreJobId): AgentResponse
+    {
+        return $this->send('get', "agent/restore-jobs/{$restoreJobId}/download", [], $this->runtimeBearer());
+    }
+
+    /**
+     * POST /api/v1/agent/restore-jobs/{id}/report (ability app:restore) — the
+     * AUTHORITATIVE restore outcome after the agent verifies the SHA256 and
+     * deposits. `success=false` carries the abort `reason` (e.g. a checksum
+     * mismatch, Rule 4) so no failure is silent (PA4).
+     *
+     * @param  array<string, mixed>  $payload  success, reason?, log?
+     */
+    public function reportRestore(string $restoreJobId, array $payload): AgentResponse
+    {
+        return $this->send('post', "agent/restore-jobs/{$restoreJobId}/report", $payload, $this->runtimeBearer());
+    }
+
+    /**
+     * Pull the archive BYTES from the signed egress `download_url` straight to a
+     * local sink path (memory-safe for GB-scale archives — ADR-0011). The URL is
+     * absolute + signed; the runtime PAT still travels as the bearer (defence in
+     * depth: the Hub requires BOTH the signature and the `app:restore` token).
+     * Returns the HTTP status; a 426 hard-block is thrown like every other
+     * surface. Bytes are NOT parsed as the JSON envelope.
+     */
+    public function downloadArchive(string $url, string $sinkPath): int
+    {
+        $timeout = (int) (($this->config['restore']['download_timeout'] ?? null) ?: 600);
+
+        $response = $this->configuredRequest($this->runtimeBearer())
+            ->timeout($timeout)
+            ->sink($sinkPath)
+            ->get($url);
+
+        if ($response->status() === 426) {
+            $message = $this->extractMessage($response, 'Platform Agent upgrade required.');
+
+            $this->logger?->error('platform-agent.upgrade_required', [
+                'endpoint' => 'agent/restore-jobs/archive',
+                'status' => 426,
+                'message' => $message,
+            ]);
+
+            throw new AgentUpgradeRequiredException($message, 'agent/restore-jobs/archive');
+        }
+
+        if ($response->failed()) {
+            $this->logger?->warning('platform-agent.restore_download_failed', [
+                'status' => $response->status(),
+            ]);
+        }
+
+        return $response->status();
+    }
+
+    /**
      * Issue a JSON request and return the parsed envelope, applying the 426 and
      * version_warning rules. Public so PA2+ command/service code can reach the
      * shipped endpoints not yet wrapped by a dedicated method above.

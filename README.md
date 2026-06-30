@@ -64,7 +64,7 @@ hardcoded.
 | `platform-agent:heartbeat` | Frequent liveness ping (bytes only — Rule 1) | PA2 |
 | `platform-agent:report` | Richer health/version/environment report | PA2 |
 | `platform-agent:backup --kind=database\|files` | Split backup → checksum → upload | PA3 |
-| `platform-agent:restore {location}` | Agent-PULL restore (verify SHA256 before restoring) | PA4 |
+| `platform-agent:restore {location}` | Agent-PULL restore: pull → verify SHA256 (Rule 4) → deposit `backup.zip` + sidecar at {location} (non-destructive; `--job=<id>` to pick among many) | PA4 |
 
 ## Scheduling
 

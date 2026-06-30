@@ -1,0 +1,34 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.2.0",
+    "date": "2026-06-30",
+    "endpoint": "GET /api/v1/agent/restore-jobs/{id}/download",
+    "ability": "app:restore",
+    "kind": "success-response",
+    "status_code": 200,
+    "status": "shipped",
+    "note": "NON-MUTATING manifest; download_url points at the signed /archive byte egress (ADR-0011). The agent overrides sha256 + download_url at test time to match the faked bytes.",
+    "source": "AgentRestoreController::download + RestoreDownloadService::manifest"
+  },
+  "body": {
+    "success": true,
+    "message": "Restore Manifest Issued",
+    "data": {
+      "restore_job_id": "5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c",
+      "restore_request_id": "4e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b",
+      "status": "DownloadReady",
+      "archive": {
+        "backup_archive_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+        "filename": "abc-erp-prod-db-2026-06-29-1200.zip",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sidecar_filename": "abc-erp-prod-db-2026-06-29-1200.zip.sha256",
+        "size_bytes": 2048
+      },
+      "storage_node_id": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f",
+      "download_url": "https://hub.platform.test/api/v1/agent/restore-jobs/5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c/archive?expires=9999999999&signature=deadbeef",
+      "expires_at": "2026-06-30T09:30:00+00:00"
+    },
+    "errors": null,
+    "meta": {}
+  }
+}

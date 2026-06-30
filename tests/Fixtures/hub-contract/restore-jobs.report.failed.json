@@ -1,0 +1,37 @@
+{
+  "_contract": {
+    "hub_agent_contract_version": "1.2.0",
+    "date": "2026-06-30",
+    "endpoint": "POST /api/v1/agent/restore-jobs/{id}/report",
+    "ability": "app:restore",
+    "kind": "success-response",
+    "variant": "failure",
+    "status_code": 200,
+    "status": "shipped",
+    "note": "A successful 200 envelope acknowledging a reported FAILURE (e.g. checksum mismatch, Rule 4).",
+    "source": "AgentRestoreController::report + RestoreJobResource"
+  },
+  "body": {
+    "success": true,
+    "message": "Restore Reported Failed",
+    "data": {
+      "id": "5f6a7b8c-9d0e-4f1a-8b2c-3d4e5f6a7b8c",
+      "restore_request_id": "4e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b",
+      "backup_archive_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+      "storage_node_id": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f",
+      "status": "Failed",
+      "is_terminal": true,
+      "is_success": false,
+      "is_failed": true,
+      "started_at": "2026-06-30T09:00:00+00:00",
+      "completed_at": "2026-06-30T09:03:00+00:00",
+      "download_issued_at": "2026-06-30T09:02:00+00:00",
+      "duration_seconds": 180,
+      "log": "FAILED: SHA256 mismatch — aborted restore (Rule 4).",
+      "created_at": "2026-06-30T09:00:00+00:00",
+      "updated_at": "2026-06-30T09:03:00+00:00"
+    },
+    "errors": null,
+    "meta": {}
+  }
+}

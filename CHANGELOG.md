@@ -11,6 +11,27 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
+### Added (PA4 — restore: agent PULL → verify → deposit)
+
+- **`platform-agent:restore {location}`** — agent-PULL restore (ADR-0011). Discovers
+  an approved RestoreJob via the `GET /api/v1/agent/restore-jobs` **poll fallback**
+  (Rule 6), fetches the **non-mutating** manifest, pulls `backup.zip` bytes off the
+  **signed `/archive` byte-egress** (runtime PAT carried alongside the signature —
+  defence in depth), **verifies the SHA256 before depositing** (Rule 4), and
+  **deposits the verified `backup.zip` + a `.sha256` sidecar at {location}**. It is
+  **NON-DESTRUCTIVE** — the customer applies the deposited archive; the agent never
+  extracts or imports it. A **checksum mismatch aborts**: the partial download is
+  deleted and a failure (with reason) is reported — no silent failure. `--job=<id>`
+  selects among multiple approved jobs; a single approved job is auto-selected;
+  `PLATFORM_RESTORE_LOCATION` supplies the target for argument-less (scheduled) runs.
+- **`ArchiveRestorer`** — manifest → byte download → SHA256 verify → deposit, returning
+  a typed **`RestoreResult`** (success / Rule-4 mismatch / failure). A 426 hard-block
+  surfaces as an upgrade error (never swallowed into a reportable failure).
+- **`PlatformClient`** gains `restoreJobs()`, `restoreManifest()`, `reportRestore()`
+  and a memory-safe `downloadArchive()` (streams to a sink for GB-scale archives).
+- The **Laravel Echo push subscriber is intentionally DEFERRED** to a latency
+  follow-up — polling is the Rule-6 fallback and is never removed.
+
 ### Added (PA2 — register + heartbeat/report + schedule macro)
 
 - **`platform-agent:register`** — explicit re-pair over the enrollment exchange;
