@@ -77,7 +77,41 @@ class PlatformClient
     }
 
     /**
-     * Issue a request and return the parsed envelope, applying the 426 and
+     * POST /api/v1/agent/backup-runs (ability app:backup) — the run-log ingest
+     * (ADR-0008). Reports the `running` START + terminal `success`/`failed`; the
+     * Hub upserts on `(application_id, agent_run_uuid)`. JSON envelope (PA3).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function backupRun(array $payload): AgentResponse
+    {
+        return $this->send('post', 'agent/backup-runs', $payload, $this->runtimeBearer());
+    }
+
+    /**
+     * POST /api/v1/agent/archives (ability app:backup) — the SINGLE-POST archive
+     * upload + catalog path for small/below-threshold archives (Rule 3 + Rule 4).
+     * Sends `backup.zip` + the `.sha256` sidecar as multipart; the Hub recomputes
+     * the checksum from disk (authoritative) and returns the catalog row (PA3).
+     *
+     * Large/growing archives use the tus surface instead — see {@see TusUploadClient}.
+     *
+     * @param  array<string, scalar|null>  $fields  filename, kind, checksum, uploaded_at, ...
+     * @param  array<string, string>  $files   form field => absolute local path (file, sidecar)
+     */
+    public function uploadArchive(array $fields, array $files): AgentResponse
+    {
+        $request = $this->configuredRequest($this->runtimeBearer())->acceptJson();
+
+        foreach ($files as $field => $path) {
+            $request = $request->attach($field, (string) file_get_contents($path), basename($path));
+        }
+
+        return $this->handle($request->post('agent/archives', $fields), 'agent/archives');
+    }
+
+    /**
+     * Issue a JSON request and return the parsed envelope, applying the 426 and
      * version_warning rules. Public so PA2+ command/service code can reach the
      * shipped endpoints not yet wrapped by a dedicated method above.
      *
@@ -94,13 +128,23 @@ class PlatformClient
 
     private function request(string $bearer): PendingRequest
     {
+        return $this->configuredRequest($bearer)
+            ->acceptJson()
+            ->asJson();
+    }
+
+    /**
+     * Shared base request: baseUrl, bearer, timeouts, retries and User-Agent —
+     * WITHOUT a content-type so callers pick JSON ({@see request()}) or multipart
+     * ({@see uploadArchive()}).
+     */
+    private function configuredRequest(string $bearer): PendingRequest
+    {
         $http = $this->config['http'] ?? [];
 
         return $this->http
             ->baseUrl($this->baseUrl())
             ->withToken($bearer)
-            ->acceptJson()
-            ->asJson()
             ->timeout((int) ($http['timeout'] ?? 30))
             ->connectTimeout((int) ($http['connect_timeout'] ?? 10))
             ->retry(
@@ -186,6 +230,16 @@ class PlatformClient
             ?? throw new MissingCredentialException(
                 'No runtime token available. Run platform-agent:install to enroll and obtain a runtime PAT.'
             );
+    }
+
+    /**
+     * The durable runtime PAT used as the Bearer for operational calls. Exposed
+     * for the tus upload client, which speaks the raw tus protocol (not the JSON
+     * envelope) but shares the same per-application Authorization. Never logged.
+     */
+    public function authToken(): string
+    {
+        return $this->runtimeBearer();
     }
 
     public function baseUrl(): string
