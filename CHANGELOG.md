@@ -13,6 +13,29 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.4] - 2026-07-01
+
+### Fixed
+
+- **Reported `agent_version` no longer freezes in a published config.** The
+  version lived as a string literal in `config/platform-agent.php`. Because
+  `install` publishes that file into the customer app and `composer update`
+  never overwrites a published config, upgraded agents kept reporting the
+  version captured at first install (e.g. a customer on the package's v1.0.3
+  code still reporting `1.0.0`). The config default now references
+  `PlatformAgent::VERSION`; `vendor:publish` copies that reference verbatim, so a
+  published config keeps tracking the installed package across upgrades.
+
+### Changed
+
+- **Single source of truth for the wire version:** new `PlatformAgent::VERSION`
+  constant. The config default resolves to it, and the release CI guard now
+  asserts `tag == PlatformAgent::VERSION`.
+- **Existing installs:** a config published before v1.0.4 still holds a frozen
+  literal — re-publish with `php artisan vendor:publish --tag=platform-agent-config --force`
+  (or set `'agent_version' => \SidewalkDevelopers\PlatformAgent\PlatformAgent::VERSION`)
+  once after upgrading to pick up the self-tracking default.
+
 ## [1.0.3] - 2026-07-01
 
 ### Fixed

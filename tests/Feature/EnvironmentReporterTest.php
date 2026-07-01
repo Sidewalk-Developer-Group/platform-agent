@@ -2,12 +2,22 @@
 
 declare(strict_types=1);
 
+use SidewalkDevelopers\PlatformAgent\PlatformAgent;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
 
 function reporter(): EnvironmentReporter
 {
     return app(EnvironmentReporter::class);
 }
+
+it('resolves the config agent_version from PlatformAgent::VERSION, not a frozen literal', function () {
+    // The package default must reference the constant so a PUBLISHED copy keeps
+    // tracking the installed package across upgrades (v1.0.4). A hardcoded string
+    // that drifts from the constant fails this guard.
+    $default = require __DIR__.'/../../config/platform-agent.php';
+
+    expect($default['agent_version'])->toBe(PlatformAgent::VERSION);
+});
 
 it('builds a register payload with version, host and a sha256 fingerprint, no application_id', function () {
     $payload = reporter()->registerPayload();

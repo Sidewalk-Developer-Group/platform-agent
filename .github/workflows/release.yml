@@ -55,15 +55,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Assert config agent_version == tag
+      - name: Assert PlatformAgent::VERSION == tag
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          # The config file calls env() so it can't be require()d standalone —
-          # read the literal default directly.
-          CFG=$(grep -oE "'agent_version' => '[^']+'" config/platform-agent.php | head -1 | sed -E "s/.*'agent_version' => '([^']+)'.*/\1/")
-          echo "tag=$TAG config agent_version=$CFG"
-          if [ "$TAG" != "$CFG" ]; then
-            echo "::error::Tag ($TAG) does not match config agent_version ($CFG). The published version IS the agent_version (ADR-0007 §2.9)."
+          # Single source of truth is the PlatformAgent::VERSION constant; the
+          # config default references it (v1.0.4), so guard the constant.
+          VER=$(grep -oE "const VERSION = '[^']+'" src/PlatformAgent.php | head -1 | sed -E "s/.*const VERSION = '([^']+)'.*/\1/")
+          echo "tag=$TAG PlatformAgent::VERSION=$VER"
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error::Tag ($TAG) does not match PlatformAgent::VERSION ($VER). The published version IS the agent_version (ADR-0007 §2.9)."
             exit 1
           fi
 

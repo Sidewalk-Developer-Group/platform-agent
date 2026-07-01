@@ -26,6 +26,16 @@ use Illuminate\Support\Arr;
 final class PlatformAgent
 {
     /**
+     * The package's own published SemVer — the SINGLE source of truth for the
+     * `agent_version` reported on the wire (ADR-0007 §2.9). The config default
+     * references THIS constant (never a frozen string literal) so a customer's
+     * published `config/platform-agent.php` keeps tracking the installed package
+     * across upgrades instead of freezing the value at publish time. The release
+     * CI guards `tag == self::VERSION`.
+     */
+    public const VERSION = '1.0.4';
+
+    /**
      * Register the agent's scheduled entries on the given Schedule.
      *
      * @param  array<string, mixed>|null  $config  resolved `platform-agent` config (defaults to config('platform-agent'))

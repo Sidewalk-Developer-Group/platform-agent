@@ -76,9 +76,14 @@ return [
     | the verdict (soft `version_warning` on a 2xx, or HTTP 426 hard-block). The
     | package never embeds those thresholds — it only reacts to the Hub verdict.
     |
+    | This references PlatformAgent::VERSION (never a hardcoded string) so a
+    | PUBLISHED copy of this file keeps tracking the installed package across
+    | upgrades instead of freezing the value at publish time (v1.0.4). Do not
+    | replace it with a literal.
+    |
     */
 
-    'agent_version' => '1.0.3',
+    'agent_version' => \SidewalkDevelopers\PlatformAgent\PlatformAgent::VERSION,
 
     /*
     |--------------------------------------------------------------------------
