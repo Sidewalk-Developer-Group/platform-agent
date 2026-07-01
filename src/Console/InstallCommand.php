@@ -42,6 +42,13 @@ final class InstallCommand extends AbstractAgentCommand
             return self::FAILURE;
         }
 
+        // Pre-flight: the enrollment token is single-use and is consumed by the
+        // exchange below. Ensure the store can persist the result FIRST, so a
+        // missing table never burns the token (v1.0.3).
+        if (! $this->ensureStorageReady($credentials)) {
+            return self::FAILURE;
+        }
+
         if ($credentials->hasRuntimeToken()) {
             $this->components->warn(
                 'A runtime token already exists. Re-registering rotates it; a FRESH operator-minted '
@@ -80,6 +87,48 @@ final class InstallCommand extends AbstractAgentCommand
             // Non-fatal: onboarding can proceed with the merged package default.
             $this->components->warn('Could not publish config (continuing with package defaults): '.$e->getMessage());
         }
+    }
+
+    /**
+     * Guarantee the durable credential store can persist the runtime token
+     * BEFORE the single-use enrollment exchange. If the package table is
+     * missing we run the package's OWN migration (never a blanket `migrate`,
+     * which would touch the customer's unrelated pending migrations) and
+     * re-check. Failing here — rather than after the exchange — keeps the
+     * one-time enrollment token intact for a clean retry (v1.0.3).
+     */
+    private function ensureStorageReady(CredentialStore $credentials): bool
+    {
+        if ($credentials->isReady()) {
+            return true;
+        }
+
+        $migrationsPath = realpath(__DIR__.'/../../database/migrations');
+
+        if ($migrationsPath !== false) {
+            $this->components->task(
+                'Preparing credential storage (running package migration)',
+                function () use ($migrationsPath): void {
+                    $this->callSilent('migrate', [
+                        '--path' => $migrationsPath,
+                        '--realpath' => true,
+                        '--force' => true,
+                    ]);
+                }
+            );
+        }
+
+        if ($credentials->isReady()) {
+            return true;
+        }
+
+        $this->components->error(
+            'Credential storage is not ready: the platform_agent_credentials table is missing and '
+            .'could not be created automatically. Run `php artisan migrate` and retry. No enrollment '
+            .'token was consumed.'
+        );
+
+        return false;
     }
 
     private function validateEnvironment(CredentialStore $credentials): bool

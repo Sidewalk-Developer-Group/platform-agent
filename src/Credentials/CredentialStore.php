@@ -42,6 +42,14 @@ interface CredentialStore
     public function hasRuntimeToken(): bool;
 
     /**
+     * Whether the durable store is ready to PERSIST a runtime token (e.g. its
+     * backing table exists). Checked BEFORE the single-use enrollment exchange
+     * so a storage failure never consumes the one-time token with nowhere to
+     * store the result (v1.0.3).
+     */
+    public function isReady(): bool;
+
+    /**
      * Persist the durable runtime PAT returned by the Hub register exchange.
      *
      * The PA1 encrypted-DB implementation encrypts at rest (Laravel Crypt /

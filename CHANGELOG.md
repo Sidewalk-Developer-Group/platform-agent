@@ -13,6 +13,29 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.3] - 2026-07-01
+
+### Fixed
+
+- **`install` no longer burns the enrollment token when the DB isn't migrated.**
+  `platform-agent:install` performed the enrollment→runtime exchange (which
+  single-use-**consumes** the operator-minted enrollment token at the Hub)
+  *before* it tried to persist the runtime token. If the
+  `platform_agent_credentials` table was missing (the customer never ran
+  `php artisan migrate`), the persist crashed *after* the token was already
+  spent, leaving onboarding unrecoverable without a fresh token. Install now
+  pre-flights storage readiness (`CredentialStore::isReady()`) BEFORE the
+  exchange: if the table is missing it runs the package's **own** migration
+  (targeted `--path`, never a blanket `migrate` that would touch the customer's
+  unrelated pending migrations) and re-checks; if it still can't persist, it
+  fails loudly with the token intact for a clean retry.
+
+### Added
+
+- `CredentialStore::isReady()` — whether the durable store can persist a runtime
+  token (backing table exists). Implemented by `DatabaseCredentialStore` via a
+  schema check that never throws into onboarding.
+
 ## [1.0.2] - 2026-07-01
 
 ### Fixed

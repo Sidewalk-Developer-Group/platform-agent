@@ -63,6 +63,23 @@ final class DatabaseCredentialStore implements CredentialStore
         return $this->runtimeToken() !== null;
     }
 
+    public function isReady(): bool
+    {
+        $connection = $this->config->get('platform-agent.store.connection');
+        $table = (string) $this->config->get('platform-agent.store.table', 'platform_agent_credentials');
+
+        try {
+            return $this->db->connection($connection)->getSchemaBuilder()->hasTable($table);
+        } catch (\Throwable $e) {
+            // DB unreachable / driver error — not ready (never throws into onboarding).
+            $this->logger?->warning('platform-agent.credential_store.readiness_check_failed', [
+                'reason' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     public function putRuntimeToken(string $token, array $meta = []): void
     {
         $now = now();

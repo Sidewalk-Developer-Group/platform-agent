@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 
 function registerRuntimeTokenBody(): array
@@ -95,6 +97,66 @@ it('surfaces a 426 upgrade-required hard block and stores nothing', function () 
         ->assertExitCode(1);
 
     expect(app(CredentialStore::class)->hasRuntimeToken())->toBeFalse();
+});
+
+it('auto-prepares credential storage before the exchange when the table is missing', function () {
+    // Simulate a customer who installed the package but never ran `migrate`:
+    // neither the table nor its migration-ledger row exists.
+    Schema::dropIfExists('platform_agent_credentials');
+    if (Schema::hasTable('migrations')) {
+        DB::table('migrations')->where('migration', 'like', '%create_platform_agent_credentials_table')->delete();
+    }
+    expect(Schema::hasTable('platform_agent_credentials'))->toBeFalse();
+
+    fakeRegister();
+
+    $this->artisan('platform-agent:install')
+        ->expectsOutputToContain('Preparing credential storage')
+        ->assertExitCode(0);
+
+    // The package migration ran and the runtime token persisted.
+    expect(Schema::hasTable('platform_agent_credentials'))->toBeTrue();
+    expect(app(CredentialStore::class)->hasRuntimeToken())->toBeTrue();
+});
+
+it('does not consume the enrollment token when storage cannot be prepared', function () {
+    // Store that can never persist — mirrors an unrecoverable DB/table failure.
+    // The exchange must NOT run, so the single-use enrollment token survives.
+    app()->instance(CredentialStore::class, new class implements CredentialStore
+    {
+        public function enrollmentToken(): ?string
+        {
+            return 'enrollment-token-fixture';
+        }
+
+        public function runtimeToken(): ?string
+        {
+            return null;
+        }
+
+        public function hasRuntimeToken(): bool
+        {
+            return false;
+        }
+
+        public function isReady(): bool
+        {
+            return false;
+        }
+
+        public function putRuntimeToken(string $token, array $meta = []): void {}
+
+        public function forgetRuntimeToken(): void {}
+    });
+
+    fakeRegister();
+
+    $this->artisan('platform-agent:install')
+        ->expectsOutputToContain('Credential storage is not ready')
+        ->assertExitCode(1);
+
+    // The enrollment exchange never fired → the one-time token is not burned.
+    Http::assertNothingSent();
 });
 
 it('rotates the runtime token on re-install', function () {
