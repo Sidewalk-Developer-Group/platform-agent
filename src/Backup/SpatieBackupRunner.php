@@ -9,7 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Spatie\Backup\Events\BackupZipWasCreated;
 
 /**
- * Concrete {@see BackupRunner} over `spatie/laravel-backup` v10 (ADR-0007
+ * Concrete {@see BackupRunner} over `spatie/laravel-backup` v9 or v10 (ADR-0007
  * Addendum A) — thin glue, the same "real I/O behind a faked seam" pattern as the
  * live HTTP in PlatformClient (PA3).
  *

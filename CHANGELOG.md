@@ -13,6 +13,18 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.1] - 2026-07-01
+
+### Fixed
+
+- **PHP 8.2 onboarding.** The manifest declared `php: ^8.2 || ^8.3 || ^8.4` but
+  pinned `spatie/laravel-backup: ^10.0`, whose v10 line requires PHP 8.3+ —
+  making the package uninstallable on PHP 8.2 customers (Composer failed to
+  resolve). Widened to `spatie/laravel-backup: ^9.0 || ^10.0`; Composer now
+  resolves v9.3.x on PHP 8.2 + Laravel 11/12 and v10.x on PHP 8.3+. Only the
+  long-standing `Spatie\Backup\Events\BackupZipWasCreated` event is used, which
+  is present across v9 and v10 — no behavior change.
+
 ## [1.0.0] - 2026-07-01
 
 First **public Packagist** release (ADR-0007 Addendum B.4). Ships the full PA0–PA5
