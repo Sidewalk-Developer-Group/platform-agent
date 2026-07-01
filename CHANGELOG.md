@@ -13,6 +13,17 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.2] - 2026-07-01
+
+### Fixed
+
+- **Reported `agent_version` now matches the tag.** v1.0.1 shipped the PHP 8.2
+  dependency fix but the published artifact (`f43ef65`) still reported
+  `agent_version = 1.0.0` — the corrective bump was tagged onto a re-tag that
+  Packagist rejected under stable-version immutability. v1.0.2 is a clean,
+  forward-only release carrying the same spatie/laravel-backup `^9.0 || ^10.0`
+  fix with `agent_version = 1.0.2`. No functional change beyond v1.0.1.
+
 ## [1.0.1] - 2026-07-01
 
 ### Fixed
