@@ -120,7 +120,6 @@ final class PlatformAgentServiceProvider extends ServiceProvider
         $this->app->singleton(BackupRunner::class, static function ($app): BackupRunner {
             return new SpatieBackupRunner(
                 artisan: $app->make(Artisan::class),
-                events: $app->make(Dispatcher::class),
                 config: $app->make(ConfigRepository::class),
             );
         });

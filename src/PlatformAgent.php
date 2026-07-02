@@ -33,7 +33,7 @@ final class PlatformAgent
      * across upgrades instead of freezing the value at publish time. The release
      * CI guards `tag == self::VERSION`.
      */
-    public const VERSION = '1.0.4';
+    public const VERSION = '1.0.5';
 
     /**
      * Register the agent's scheduled entries on the given Schedule.

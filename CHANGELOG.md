@@ -13,6 +13,23 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.5] - 2026-07-02
+
+### Fixed
+
+- **Successful backups were reported as failed (`platform-agent:backup`).** The
+  runner captured the produced archive path from spatie's `BackupZipWasCreated` /
+  `BackupWasSuccessful` events, but it also runs spatie with
+  `--disable-notifications` (the agent must never fire the customer's configured
+  backup mail/Slack) — and spatie dispatches BOTH events through
+  `sendNotification()`, gated on that same flag. So the events never fired, the
+  path was never captured, and every successful backup was reported failed. The
+  runner now locates the archive by diffing the destination disk for the `.zip`
+  produced during the run — independent of spatie's events (whose shape also
+  differs between v9 and v10) and of the resolved backup-name directory.
+- Adds direct test coverage for the concrete `SpatieBackupRunner` (previously only
+  the `BackupRunner` interface was faked, so this class was untested).
+
 ## [1.0.4] - 2026-07-01
 
 ### Fixed
