@@ -13,6 +13,20 @@ split-backup `kind` baseline — Addendum F).
 
 _Nothing yet._
 
+## [1.0.6] - 2026-07-02
+
+### Changed
+
+- **Lowered the tus threshold 256 MiB → 64 MiB** (`PLATFORM_BACKUP_TUS_THRESHOLD_BYTES`).
+  Archives at/above 64 MiB now upload via the resumable tus protocol (small PATCH
+  chunks) instead of a single large POST; smaller archives keep the single-POST
+  path. This reconciles with the Hub's single-POST ceiling
+  (`agentmanagement.upload.single_post_max_bytes`, also 64 MiB) so the boundary is
+  crisp and a single-POST archive is always within the Hub's PHP upload limits.
+  Paired with Hub-side changes raising `upload_max_filesize`/`post_max_size` and
+  making the single-POST validation cap config-driven (was a fixed value larger
+  than the tus threshold).
+
 ## [1.0.5] - 2026-07-02
 
 ### Fixed

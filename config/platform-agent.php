@@ -165,8 +165,14 @@ return [
         'tus' => [
             // Archives >= this size upload via the tus.io resumable protocol to
             // POST /api/v1/agent/uploads; smaller archives use the single-POST
-            // /api/v1/agent/archives path. ~256 MiB default. Config, not hardcoded.
-            'threshold_bytes' => (int) env('PLATFORM_BACKUP_TUS_THRESHOLD_BYTES', 268435456),
+            // /api/v1/agent/archives path. Config, not hardcoded.
+            //
+            // INVARIANT: this MUST equal the Hub's single-POST ceiling
+            // (AgentManagement config `upload.single_post_max_bytes`, default
+            // 64 MiB) so the boundary is crisp — a single-POST archive is always
+            // within what the Hub's PHP limits accept, and anything larger takes
+            // the chunked tus path (each PATCH chunk << the Hub's post_max_size).
+            'threshold_bytes' => (int) env('PLATFORM_BACKUP_TUS_THRESHOLD_BYTES', 67108864), // 64 MiB
             'chunk_size_bytes' => (int) env('PLATFORM_BACKUP_TUS_CHUNK_BYTES', 16777216), // 16 MiB
         ],
     ],
