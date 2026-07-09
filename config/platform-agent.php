@@ -121,6 +121,43 @@ return [
     'store' => [
         'connection' => env('PLATFORM_STORE_CONNECTION'),
         'table' => env('PLATFORM_STORE_TABLE', 'platform_agent_credentials'),
+
+        // NON-SECRET operational state (last backup-run outcome per kind, last
+        // scheduled-heartbeat time). Plaintext JSON — secrets never live here.
+        'state_table' => env('PLATFORM_STORE_STATE_TABLE', 'platform_agent_state'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Telemetry (real heartbeat/report facts — v1.1.0)
+    |--------------------------------------------------------------------------
+    |
+    | The agent measures and reports REAL values on every heartbeat/report
+    | (Rule 1: bytes only — a usage percentage is never sent; the Hub derives
+    | it):
+    |
+    | `storage_paths`      Paths whose recursive size is reported as
+    |                      `storage_usage_bytes`. Comma-separated in env.
+    |                      Default: the application's storage directory.
+    | `cache_ttl_seconds`  How long a measured storage size is cached so the
+    |                      5-minute heartbeat never repeatedly walks a large
+    |                      tree. 0 disables caching (measure every time).
+    | `min_free_bytes`     Degrade the computed status when the app base-path
+    |                      free space drops below this. 0 = disabled.
+    |
+    | Computed status: `degraded` when the most recent run of any backup kind
+    | failed or free disk is below `min_free_bytes`; `healthy` otherwise. An
+    | explicit `platform-agent:report --status=...` always wins.
+    |
+    */
+
+    'telemetry' => [
+        'storage_paths' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('PLATFORM_TELEMETRY_STORAGE_PATHS', storage_path())),
+        ))),
+        'cache_ttl_seconds' => (int) env('PLATFORM_TELEMETRY_CACHE_TTL', 1800),
+        'min_free_bytes' => (int) env('PLATFORM_TELEMETRY_MIN_FREE_BYTES', 0),
     ],
 
     /*

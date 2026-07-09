@@ -88,6 +88,34 @@ split backups (`--kind=database` / `--kind=files`) on their configured cadences
 (`config/platform-agent.php` → `backup.kinds.*.cadence`). Backup execution lands
 at PA3; the schedule entries are wired now so onboarding stays near-zero-code.
 
+## Telemetry (real heartbeat facts — v1.1.0)
+
+Every heartbeat and report carries **measured** telemetry (Rule 1: bytes only —
+a usage percentage is never sent; the Hub derives it):
+
+- `last_backup_at` — the latest successful backup run, recorded locally in the
+  package's non-secret state table (`platform_agent_state`).
+- `storage_usage_bytes` — recursive size of `telemetry.storage_paths`
+  (default: your app's `storage/` directory; comma-separated
+  `PLATFORM_TELEMETRY_STORAGE_PATHS` to override). The measurement is cached
+  for `PLATFORM_TELEMETRY_CACHE_TTL` seconds (default 30 min) so the 5-minute
+  heartbeat never repeatedly walks a large tree.
+- `disk_free_bytes` / `disk_total_bytes` for the app base path (sent inside
+  `metadata` until the Hub contract promotes them).
+- a **computed status**: `degraded` when the most recent run of any backup
+  kind failed, or when base-path free space drops below
+  `PLATFORM_TELEMETRY_MIN_FREE_BYTES` (default 0 = disabled); `healthy`
+  otherwise. `metadata.status_reasons` says why. An explicit
+  `platform-agent:report --status=healthy|degraded|unreachable` always wins
+  over the computed default (`--status=auto`).
+
+Unmeasurable values are **omitted, never fabricated** — a missing state table
+(upgrade installed but `php artisan migrate` not run yet) degrades to "unknown"
+without breaking backups or heartbeats.
+
+**Upgrading from ≤ 1.0.x:** run `php artisan migrate` once after updating — it
+creates the small `platform_agent_state` table the telemetry reads.
+
 ## Restore-discovery push (optional, latency follow-up)
 
 By default the agent **polls** for approved restore jobs (Rule 6). For lower

@@ -13,6 +13,7 @@ use SidewalkDevelopers\PlatformAgent\Console\Concerns\ReportsAgentTelemetry;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 use SidewalkDevelopers\PlatformAgent\Exceptions\AgentUpgradeRequiredException;
 use SidewalkDevelopers\PlatformAgent\Reporting\BackupRunReporter;
+use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
 
 /**
  * `platform-agent:backup --kind=database|files` — the headline split backup (PA3).
@@ -50,6 +51,7 @@ final class BackupCommand extends AbstractAgentCommand
         BackupRunner $runner,
         ArchiveUploader $uploader,
         BackupRunReporter $reporter,
+        AgentStateStore $state,
     ): int {
         $kind = (string) $this->option('kind');
         if (! in_array($kind, self::KINDS, true)) {
@@ -77,6 +79,7 @@ final class BackupCommand extends AbstractAgentCommand
             $reporter->reportRunning($runUuid, $kind, $spatieName, $startedAt, $trigger);
         } catch (AgentUpgradeRequiredException $e) {
             $this->components->error('Platform Agent upgrade required: '.$e->getMessage());
+            $state->recordBackupRun($kind, success: false);
 
             return self::FAILURE;
         } catch (ConnectionException $e) {
@@ -93,6 +96,7 @@ final class BackupCommand extends AbstractAgentCommand
             $this->reportTerminal(fn () => $reporter->reportFailed(
                 $runUuid, $kind, $spatieName, $startedAt, new DateTimeImmutable(), (string) $result->error, $trigger,
             ));
+            $state->recordBackupRun($kind, success: false);
 
             return self::FAILURE;
         }
@@ -110,6 +114,7 @@ final class BackupCommand extends AbstractAgentCommand
             $this->reportTerminal(fn () => $reporter->reportFailed(
                 $runUuid, $kind, $spatieName, $startedAt, new DateTimeImmutable(), 'Upgrade required: '.$e->getMessage(), $trigger,
             ));
+            $state->recordBackupRun($kind, success: false);
             $this->cleanup((string) $result->archivePath, $sidecarPath);
 
             return self::FAILURE;
@@ -118,6 +123,7 @@ final class BackupCommand extends AbstractAgentCommand
             $this->reportTerminal(fn () => $reporter->reportFailed(
                 $runUuid, $kind, $spatieName, $startedAt, new DateTimeImmutable(), 'Upload failed: '.$e->getMessage(), $trigger,
             ));
+            $state->recordBackupRun($kind, success: false);
             $this->cleanup((string) $result->archivePath, $sidecarPath);
 
             return self::FAILURE;
@@ -130,6 +136,7 @@ final class BackupCommand extends AbstractAgentCommand
                 $runUuid, $kind, $spatieName, $startedAt, new DateTimeImmutable(),
                 'Hub checksum verification failed (corrupted); archive '.($upload->archiveId ?? 'unknown'), $trigger,
             ));
+            $state->recordBackupRun($kind, success: false);
             $this->cleanup((string) $result->archivePath, $sidecarPath);
 
             return self::FAILURE;
@@ -140,6 +147,7 @@ final class BackupCommand extends AbstractAgentCommand
             $result->sizeBytes, $checksum, $upload->archiveId, $trigger,
         ));
 
+        $state->recordBackupRun($kind, success: true);
         $this->cleanup((string) $result->archivePath, $sidecarPath);
 
         $this->components->info(ucfirst($kind).' backup uploaded + verified ('.$upload->via.', '.$result->sizeBytes.' bytes).');

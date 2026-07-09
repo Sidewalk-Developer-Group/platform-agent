@@ -8,6 +8,7 @@ use SidewalkDevelopers\PlatformAgent\Console\Concerns\RunsEnrollmentExchange;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
+use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
 
 /**
  * `platform-agent:install` — near-zero-code onboarding (PA1).
@@ -32,7 +33,7 @@ final class InstallCommand extends AbstractAgentCommand
 
     protected string $implementedInPhase = 'PA1';
 
-    public function handle(PlatformClient $client, CredentialStore $credentials, EnvironmentReporter $env): int
+    public function handle(PlatformClient $client, CredentialStore $credentials, EnvironmentReporter $env, AgentStateStore $state): int
     {
         $this->components->info('Onboarding this application to the Cloud Hub.');
 
@@ -45,7 +46,7 @@ final class InstallCommand extends AbstractAgentCommand
         // Pre-flight: the enrollment token is single-use and is consumed by the
         // exchange below. Ensure the store can persist the result FIRST, so a
         // missing table never burns the token (v1.0.3).
-        if (! $this->ensureStorageReady($credentials)) {
+        if (! $this->ensureStorageReady($credentials, $state)) {
             return self::FAILURE;
         }
 
@@ -91,15 +92,18 @@ final class InstallCommand extends AbstractAgentCommand
 
     /**
      * Guarantee the durable credential store can persist the runtime token
-     * BEFORE the single-use enrollment exchange. If the package table is
-     * missing we run the package's OWN migration (never a blanket `migrate`,
+     * BEFORE the single-use enrollment exchange. If a package table is
+     * missing we run the package's OWN migrations (never a blanket `migrate`,
      * which would touch the customer's unrelated pending migrations) and
      * re-check. Failing here — rather than after the exchange — keeps the
      * one-time enrollment token intact for a clean retry (v1.0.3).
+     *
+     * The non-secret state table (v1.1.0) is prepared on the same pass but is
+     * NOT a hard requirement — telemetry is null-safe without it.
      */
-    private function ensureStorageReady(CredentialStore $credentials): bool
+    private function ensureStorageReady(CredentialStore $credentials, AgentStateStore $state): bool
     {
-        if ($credentials->isReady()) {
+        if ($credentials->isReady() && $state->isReady()) {
             return true;
         }
 
@@ -115,6 +119,14 @@ final class InstallCommand extends AbstractAgentCommand
                         '--force' => true,
                     ]);
                 }
+            );
+        }
+
+        if (! $state->isReady()) {
+            // Non-fatal: telemetry degrades null-safely without local state.
+            $this->components->warn(
+                'The platform_agent_state table is missing (telemetry will omit last_backup_at / '
+                .'computed status). Run `php artisan migrate` to create it.'
             );
         }
 

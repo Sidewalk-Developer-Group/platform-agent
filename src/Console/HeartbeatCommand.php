@@ -8,15 +8,17 @@ use SidewalkDevelopers\PlatformAgent\Console\Concerns\ReportsAgentTelemetry;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
+use SidewalkDevelopers\PlatformAgent\Telemetry\TelemetryCollector;
 
 /**
  * `platform-agent:heartbeat` — frequent liveness ping (PA2).
  *
  * POST /api/v1/agent/heartbeat (ability app:heartbeat). The lean, every-5-minute
  * beat (Rule 2). Bytes only (Rule 1) — the snapshot NEVER carries a usage
- * percentage; storage_usage_bytes is sent only once the backup subsystem (PA3)
- * can supply a real value. Soft version_warning => warn + continue; HTTP 426 =>
- * hard upgrade block.
+ * percentage. Since v1.1.0 the beat carries REAL telemetry: `last_backup_at`
+ * (latest successful local run), `storage_usage_bytes` (measured + cached),
+ * disk facts in metadata, and a COMPUTED healthy|degraded status. Soft
+ * version_warning => warn + continue; HTTP 426 => hard upgrade block.
  */
 final class HeartbeatCommand extends AbstractAgentCommand
 {
@@ -28,13 +30,21 @@ final class HeartbeatCommand extends AbstractAgentCommand
 
     protected string $implementedInPhase = 'PA2';
 
-    public function handle(PlatformClient $client, CredentialStore $credentials, EnvironmentReporter $env): int
-    {
+    public function handle(
+        PlatformClient $client,
+        CredentialStore $credentials,
+        EnvironmentReporter $env,
+        TelemetryCollector $telemetry,
+    ): int {
         if (! $this->requireRuntimeToken($credentials)) {
             return self::FAILURE;
         }
 
-        $payload = $env->snapshot('healthy', ['trigger' => 'heartbeat']);
+        $payload = $env->snapshot(
+            $telemetry->status(),
+            array_merge(['trigger' => 'heartbeat'], $telemetry->metadata()),
+            $telemetry->extra(),
+        );
 
         return $this->sendTelemetry(fn () => $client->heartbeat($payload), 'Heartbeat');
     }

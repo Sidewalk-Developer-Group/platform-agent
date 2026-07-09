@@ -36,6 +36,8 @@ use SidewalkDevelopers\PlatformAgent\Console\RestoreCommand;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 use SidewalkDevelopers\PlatformAgent\Credentials\DatabaseCredentialStore;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
+use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
+use SidewalkDevelopers\PlatformAgent\Telemetry\TelemetryCollector;
 
 /**
  * Auto-discovered package provider (extra.laravel.providers in composer.json).
@@ -66,6 +68,28 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 config: $app['config'],
                 db: $app->make(ConnectionResolverInterface::class),
                 crypt: $app->make(Encrypter::class),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
+
+        // Non-secret operational state (last run outcome per kind, scheduler
+        // freshness) — plaintext sibling of the encrypted credential store.
+        $this->app->singleton(AgentStateStore::class, static function ($app): AgentStateStore {
+            return new AgentStateStore(
+                config: $app['config'],
+                db: $app->make(ConnectionResolverInterface::class),
+                logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
+            );
+        });
+
+        // Real telemetry facts (last_backup_at, storage bytes, disk facts,
+        // computed status) filling the EnvironmentReporter::snapshot() $extra seam.
+        $this->app->singleton(TelemetryCollector::class, static function ($app): TelemetryCollector {
+            return new TelemetryCollector(
+                state: $app->make(AgentStateStore::class),
+                cache: $app->make(\Illuminate\Contracts\Cache\Repository::class),
+                config: $app['config'],
+                app: $app->make(Application::class),
                 logger: $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null,
             );
         });
@@ -196,6 +220,8 @@ final class PlatformAgentServiceProvider extends ServiceProvider
     {
         return [
             CredentialStore::class,
+            AgentStateStore::class,
+            TelemetryCollector::class,
             EnvironmentReporter::class,
             PlatformClient::class,
             TusUploadClient::class,

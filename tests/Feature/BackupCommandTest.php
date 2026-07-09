@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use SidewalkDevelopers\PlatformAgent\Backup\BackupResult;
 use SidewalkDevelopers\PlatformAgent\Backup\BackupRunner;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
+use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
 
 function enrolForBackup(): void
 {
@@ -104,6 +105,11 @@ it('runs a split DB backup: running START, single-POST archive, terminal success
 
     expect(is_file($path))->toBeFalse();          // temp archive cleaned up
     expect(is_file($path.'.sha256'))->toBeFalse(); // sidecar cleaned up
+
+    // The local state now feeds last_backup_at on the next heartbeat.
+    $state = app(AgentStateStore::class);
+    expect($state->lastSuccessfulBackupAt())->not->toBeNull()
+        ->and($state->failedBackupKinds())->toBe([]);
 });
 
 it('routes a large archive to the tus surface', function () {
@@ -150,6 +156,9 @@ it('reports a FAILED run and exits non-zero when spatie fails', function () {
         && ! str_contains((string) $r['error_message'], 'topsecret'));
 
     Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), '/agent/archives'));
+
+    // The failure is recorded locally → the next heartbeat computes degraded.
+    expect(app(AgentStateStore::class)->failedBackupKinds())->toBe(['database']);
 });
 
 it('treats a Hub corrupted verdict as a FAILED run (Rule 4)', function () {

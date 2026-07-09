@@ -11,7 +11,23 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Real heartbeat/report telemetry.** Heartbeat and report now send measured
+  facts instead of a hardcoded `healthy` shell: `last_backup_at` (latest
+  successful run, recorded in a new non-secret `platform_agent_state` table),
+  `storage_usage_bytes` (recursive size of `telemetry.storage_paths`, default
+  the app `storage/` dir, cached `telemetry.cache_ttl_seconds` — default 30 min),
+  and `disk_free_bytes`/`disk_total_bytes` for the app base path (in `metadata`
+  pending first-class Hub columns). Status is **computed**: `degraded` when the
+  most recent run of any backup kind failed or free disk drops below
+  `telemetry.min_free_bytes` (0 = disabled, the default); `healthy` otherwise,
+  with `metadata.status_reasons` explaining why. `platform-agent:report`'s
+  default `--status` is now `auto` (computed); an explicit
+  `healthy|degraded|unreachable` still wins. Rule 1 holds: bytes only, never a
+  percentage; unmeasurable values are omitted, never fabricated. **Upgrade
+  note:** run `php artisan migrate` once to create `platform_agent_state`;
+  until then telemetry degrades null-safely (nothing breaks).
 
 ## [1.0.6] - 2026-07-02
 

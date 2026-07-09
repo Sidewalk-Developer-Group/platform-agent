@@ -34,6 +34,9 @@ abstract class TestCase extends Orchestra
             'prefix' => '',
         ]);
 
+        // Per-test isolated cache (telemetry storage-usage memoization).
+        $app['config']->set('cache.default', 'array');
+
         $app['config']->set('platform-agent.url', 'https://hub.platform.test');
         $app['config']->set('platform-agent.api_prefix', 'api/v1');
         $app['config']->set('platform-agent.token', 'enrollment-token-fixture');
