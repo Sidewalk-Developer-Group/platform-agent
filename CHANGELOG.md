@@ -13,6 +13,17 @@ split-backup `kind` baseline — Addendum F).
 
 ### Added
 
+- **Doctor-grade `platform-agent:diagnose`.** Beyond the redacted config +
+  connectivity probe, diagnose now runs PASS/WARN/FAIL checks and exits
+  non-zero on any FAIL: a LIVE version verdict (fires a real heartbeat —
+  soft `version_warning` ⇒ WARN, hard 426 ⇒ FAIL), schedule-wiring detection
+  (FAILS loudly when the `PlatformAgent::schedule()` one-liner is missing —
+  the silent "zero backups ever run" mode), scheduler freshness (the scheduled
+  heartbeat now runs with `--scheduled` and stamps a local marker; stale
+  > 2× the 5-minute beat ⇒ the `schedule:run` cron is dead), temp-disk
+  writability (write/read/delete probe on `backup.temp_disk`), spatie config
+  presence + per-kind source checks, and local state-table readiness.
+
 - **Local retention is live** (`backup.kinds.*.retention_days` was dead
   config). `PlatformAgent::schedule()` now wires a daily
   `platform-agent:clean --kind=database|files` entry per kind (at

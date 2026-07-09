@@ -18,7 +18,7 @@ it('wires heartbeat, report, both split backups and both retention cleans in one
     $commands = scheduledCommands($schedule);
 
     foreach ([
-        'platform-agent:heartbeat',
+        'platform-agent:heartbeat --scheduled', // stamps the freshness marker diagnose checks
         'platform-agent:report',
         'platform-agent:backup --kind=database',
         'platform-agent:backup --kind=files',

@@ -64,7 +64,7 @@ hardcoded.
 | Command | Purpose | Phase |
 |---|---|---|
 | `platform-agent:install` | Onboard (publish config, enroll, persist runtime token, wire schedule) | PA1 |
-| `platform-agent:diagnose` | Print resolved config (token redacted) + connectivity/version status | PA1 |
+| `platform-agent:diagnose` | Doctor-grade pre-flight: config, connectivity, LIVE version verdict, schedule wiring + cron freshness, temp disk, spatie config (exit ≠ 0 on FAIL) | PA1 |
 | `platform-agent:register` | Register / re-pair (version + host/fingerprint) | PA2 |
 | `platform-agent:heartbeat` | Frequent liveness ping (bytes only — Rule 1) | PA2 |
 | `platform-agent:report` | Richer health/version/environment report | PA2 |
@@ -131,6 +131,22 @@ without breaking backups or heartbeats.
 
 **Upgrading from ≤ 1.0.x:** run `php artisan migrate` once after updating — it
 creates the small `platform_agent_state` table the telemetry reads.
+
+## Doctor: `platform-agent:diagnose` (doctor-grade since v1.1.0)
+
+Answers "did onboarding actually work?" with clear PASS / WARN / FAIL lines and
+a non-zero exit on any FAIL (CI/provisioning friendly):
+
+- resolved config (tokens redacted) + Hub connectivity;
+- **live version verdict** — fires a real heartbeat and surfaces the Hub's soft
+  `version_warning` (WARN) or hard 426 upgrade block (FAIL);
+- **schedule wiring** — FAILS loudly when the `PlatformAgent::schedule()`
+  one-liner was never added (the silent "zero backups ever run" mode);
+- **scheduler freshness** — the scheduled heartbeat stamps a local marker;
+  stale (> 2× the 5-minute beat) means your `schedule:run` cron is dead;
+- temp-disk writability (`backup.temp_disk`) with a write/read/delete probe;
+- spatie config presence + per-kind sources (empty DB/file sources WARN);
+- local state table readiness (v1.1.0 migration).
 
 ## Restore-discovery push (optional, latency follow-up)
 

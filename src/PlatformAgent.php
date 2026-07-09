@@ -45,7 +45,8 @@ final class PlatformAgent
         $config ??= (array) config('platform-agent', []);
 
         // Rule 2: every Storage Node / agent reports liveness on a 5-minute beat.
-        $schedule->command('platform-agent:heartbeat')
+        // --scheduled stamps the scheduler-freshness marker diagnose checks.
+        $schedule->command('platform-agent:heartbeat --scheduled')
             ->everyFiveMinutes()
             ->withoutOverlapping()
             ->runInBackground();

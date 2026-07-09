@@ -86,6 +86,28 @@ it('sends a computed degraded status after a failed backup run', function () {
         && in_array('last_files_backup_failed', $request['metadata']['status_reasons'] ?? [], true));
 });
 
+it('records the scheduler-freshness marker only when invoked with --scheduled', function () {
+    enrolAgent();
+
+    Http::fake([
+        '*/api/v1/agent/heartbeat' => Http::response($this->fixtureBody('heartbeat.success.json'), 200),
+    ]);
+
+    $this->artisan('platform-agent:heartbeat')->assertExitCode(0);
+    expect(app(AgentStateStore::class)->lastScheduledHeartbeatAt())->toBeNull();
+
+    $this->artisan('platform-agent:heartbeat --scheduled')->assertExitCode(0);
+    expect(app(AgentStateStore::class)->lastScheduledHeartbeatAt())->not->toBeNull();
+});
+
+it('stamps the scheduler marker even before enrollment (proves the cron, not the Hub)', function () {
+    $this->artisan('platform-agent:heartbeat --scheduled')
+        ->expectsOutputToContain('Not enrolled')
+        ->assertExitCode(1);
+
+    expect(app(AgentStateStore::class)->lastScheduledHeartbeatAt())->not->toBeNull();
+});
+
 it('warns but still succeeds on a soft version_warning', function () {
     enrolAgent();
 

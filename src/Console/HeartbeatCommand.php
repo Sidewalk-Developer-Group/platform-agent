@@ -8,6 +8,7 @@ use SidewalkDevelopers\PlatformAgent\Console\Concerns\ReportsAgentTelemetry;
 use SidewalkDevelopers\PlatformAgent\Credentials\CredentialStore;
 use SidewalkDevelopers\PlatformAgent\Http\PlatformClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\EnvironmentReporter;
+use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
 use SidewalkDevelopers\PlatformAgent\Telemetry\TelemetryCollector;
 
 /**
@@ -24,7 +25,8 @@ final class HeartbeatCommand extends AbstractAgentCommand
 {
     use ReportsAgentTelemetry;
 
-    protected $signature = 'platform-agent:heartbeat';
+    protected $signature = 'platform-agent:heartbeat
+        {--scheduled : Set by the package schedule; records scheduler freshness for diagnose}';
 
     protected $description = 'Send a liveness heartbeat to the Cloud Hub.';
 
@@ -35,7 +37,15 @@ final class HeartbeatCommand extends AbstractAgentCommand
         CredentialStore $credentials,
         EnvironmentReporter $env,
         TelemetryCollector $telemetry,
+        AgentStateStore $state,
     ): int {
+        // Recorded BEFORE any guard: the marker proves the customer's
+        // `schedule:run` cron invoked us, independent of enrollment or Hub
+        // reachability. `platform-agent:diagnose` warns when it goes stale.
+        if ($this->option('scheduled')) {
+            $state->recordScheduledHeartbeat();
+        }
+
         if (! $this->requireRuntimeToken($credentials)) {
             return self::FAILURE;
         }
