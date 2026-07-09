@@ -94,6 +94,9 @@ class PlatformClient
      * Sends `backup.zip` + the `.sha256` sidecar as multipart; the Hub recomputes
      * the checksum from disk (authoritative) and returns the catalog row (PA3).
      *
+     * The pair is STREAMED from disk (fopen resources — v1.1.0), never buffered
+     * whole into memory; a below-threshold archive can still be tens of MiB.
+     *
      * Large/growing archives use the tus surface instead — see {@see TusUploadClient}.
      *
      * @param  array<string, scalar|null>  $fields  filename, kind, checksum, uploaded_at, ...
@@ -103,9 +106,37 @@ class PlatformClient
     {
         $request = $this->configuredRequest($this->runtimeBearer())->acceptJson();
 
+        /** @var list<resource> $handles */
+        $handles = [];
+
         foreach ($files as $field => $path) {
-            $request = $request->attach($field, (string) file_get_contents($path), basename($path));
+            $handle = @fopen($path, 'rb');
+
+            if ($handle === false) {
+                foreach ($handles as $opened) {
+                    if (is_resource($opened)) {
+                        @fclose($opened);
+                    }
+                }
+
+                throw new \RuntimeException("Cannot open '{$path}' for upload.");
+            }
+
+            $handles[] = $handle;
+            $request = $request->attach($field, $handle, basename($path));
         }
+
+        // The retry() around every send re-uses the SAME attached resources; a
+        // failed first attempt can leave them mid-file or at EOF. Rewind before
+        // each attempt so a retried upload always sends the complete pair.
+        // (Closing is owned by the PSR-7 stream lifecycle once attached.)
+        $request = $request->beforeSending(function () use ($handles): void {
+            foreach ($handles as $handle) {
+                if (is_resource($handle)) {
+                    @rewind($handle);
+                }
+            }
+        });
 
         return $this->handle($request->post('agent/archives', $fields), 'agent/archives');
     }

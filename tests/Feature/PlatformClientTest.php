@@ -155,3 +155,60 @@ it('falls back to the enrollment token for operational calls before the runtime 
 
     Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer enrollment-token-fixture'));
 });
+
+it('streams the single-POST archive + sidecar from disk (memory-safe)', function () {
+    app(CredentialStore::class)->putRuntimeToken('runtime-pat-fixture', [
+        'abilities' => ['app:backup', 'app:heartbeat', 'app:restore'],
+    ]);
+
+    $zip = tempnam(sys_get_temp_dir(), 'pa-stream-').'.zip';
+    file_put_contents($zip, 'ZIP-STREAMED-BYTES');
+    $sidecar = $zip.'.sha256';
+    file_put_contents($sidecar, 'feedface  '.basename($zip));
+
+    Http::fake([
+        '*/api/v1/agent/archives' => Http::response($this->fixtureBody('archives.success.json'), 201),
+    ]);
+
+    $result = client()->uploadArchive(
+        fields: [
+            'filename' => basename($zip),
+            'kind' => 'database',
+            'checksum' => str_repeat('a', 64),
+            'uploaded_at' => now()->format(DATE_ATOM),
+        ],
+        files: ['file' => $zip, 'sidecar' => $sidecar],
+    );
+
+    expect($result->success)->toBeTrue();
+
+    Http::assertSent(function (Request $r) use ($zip, $sidecar) {
+        if (! str_ends_with($r->url(), '/agent/archives')) {
+            return false;
+        }
+
+        // The attached parts travel as STREAM RESOURCES, not preloaded strings…
+        $parts = collect($r->data())->keyBy('name');
+        $streamed = is_resource($parts->get('file')['contents'] ?? null)
+            && is_resource($parts->get('sidecar')['contents'] ?? null);
+
+        // …and the multipart wire body carries the FULL bytes of both files.
+        $body = $r->body();
+
+        return $streamed
+            && str_contains($body, 'ZIP-STREAMED-BYTES')
+            && str_contains($body, 'feedface  '.basename($zip))
+            && str_contains($body, 'filename="'.basename($zip).'"')
+            && str_contains($body, 'filename="'.basename($sidecar).'"');
+    });
+
+    @unlink($zip);
+    @unlink($sidecar);
+});
+
+it('throws a clear error when an upload path cannot be opened', function () {
+    app(CredentialStore::class)->putRuntimeToken('runtime-pat-fixture');
+    Http::fake();
+
+    client()->uploadArchive(fields: [], files: ['file' => '/nonexistent/'.uniqid().'.zip']);
+})->throws(RuntimeException::class, 'Cannot open');

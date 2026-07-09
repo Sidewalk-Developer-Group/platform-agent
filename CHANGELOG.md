@@ -11,6 +11,15 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
+### Changed
+
+- **Single-POST archive uploads stream from disk.** `PlatformClient::uploadArchive`
+  attached the archive + sidecar via `file_get_contents` (the whole file in
+  RAM); both now travel as `fopen` stream resources through the same multipart
+  request, with a per-attempt rewind hook so the configured HTTP retries
+  re-send the COMPLETE pair (a consumed stream is never re-sent truncated).
+  Behavior and wire shape are identical.
+
 ### Added
 
 - **`platform-agent:install` auto-wires the schedule.** Instead of only
