@@ -13,8 +13,11 @@ logic so the customer writes near-zero code: backup creation (database + files,
 split), SHA256 checksum generation, resumable archive upload, heartbeats, health
 and version reporting, and agent-pull restore.
 
-> Status: **1.0.0 — full PA0–PA5 track shipped** (first public Packagist release).
-> Onboarding (`install`/`diagnose`), `register`/`heartbeat`/`report`, the
+> Status: **1.1.0 — full PA0–PA5 track shipped**, plus real heartbeat
+> telemetry (measured storage/disk facts + computed status), live local
+> retention (`platform-agent:clean`), a doctor-grade `diagnose`, install-time
+> schedule auto-wiring, and memory-safe streaming uploads. Onboarding
+> (`install`/`diagnose`), `register`/`heartbeat`/`report`, the
 > `PlatformAgent::schedule()` wiring, split backup → checksum → resumable upload +
 > run-log, agent-PULL `restore`, and the optional Reverb/Pusher restore-discovery
 > push `listen` are all live. Minimum Hub Agent Contract: **v1.2.0**. See

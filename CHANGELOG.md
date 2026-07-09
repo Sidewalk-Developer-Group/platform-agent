@@ -11,6 +11,16 @@ split-backup `kind` baseline — Addendum F).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.1.0] - 2026-07-10
+
+Feature release: real telemetry, live local retention, a doctor-grade
+diagnose, install-time schedule wiring, and memory-safe streaming uploads.
+**Upgrade note:** run `php artisan migrate` once after updating — it creates
+the small non-secret `platform_agent_state` table telemetry and the
+scheduler-freshness check read (everything degrades null-safely until then).
+
 ### Changed
 
 - **Single-POST archive uploads stream from disk.** `PlatformClient::uploadArchive`
