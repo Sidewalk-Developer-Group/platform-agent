@@ -22,6 +22,35 @@ function fakeRegister(int $status = 201, ?array $body = null): void
     ]);
 }
 
+function consoleRoutesPath(): string
+{
+    return app()->basePath('routes/console.php');
+}
+
+/** Give the skeleton a routes/console.php so schedule wiring can happen. */
+function seedConsoleRoutes(string $content = "<?php\n"): void
+{
+    @mkdir(dirname(consoleRoutesPath()), 0755, true);
+    file_put_contents(consoleRoutesPath(), $content);
+}
+
+// The Testbench skeleton is shared across tests — leave routes/console.php
+// exactly as we found it (it does not exist by default).
+beforeEach(function (): void {
+    $path = consoleRoutesPath();
+    $this->consoleRoutesOriginal = is_file($path) ? file_get_contents($path) : null;
+});
+
+afterEach(function (): void {
+    $path = consoleRoutesPath();
+
+    if ($this->consoleRoutesOriginal !== null) {
+        file_put_contents($path, $this->consoleRoutesOriginal);
+    } elseif (is_file($path)) {
+        unlink($path);
+    }
+});
+
 it('runs the enrollment exchange and persists the runtime token', function () {
     fakeRegister();
 
@@ -172,4 +201,71 @@ it('rotates the runtime token on re-install', function () {
     app()->forgetInstance(CredentialStore::class);
     expect(app(CredentialStore::class)->runtimeToken())
         ->toBe('2|aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789aBcDeFgHiJkL');
+});
+
+it('wires the schedule into routes/console.php with --schedule, idempotently', function () {
+    seedConsoleRoutes("<?php\n\n// existing customer entries\n");
+    fakeRegister();
+
+    $this->artisan('platform-agent:install --schedule')
+        ->expectsOutputToContain('Wired PlatformAgent::schedule')
+        ->assertExitCode(0);
+
+    $contents = file_get_contents(consoleRoutesPath());
+    expect(substr_count($contents, 'PlatformAgent::schedule'))->toBe(1)
+        ->and($contents)->toContain('// existing customer entries'); // appended, not overwritten
+
+    // Re-install: detected, never duplicated.
+    fakeRegister();
+    $this->artisan('platform-agent:install --schedule')
+        ->expectsOutputToContain('already wired')
+        ->assertExitCode(0);
+
+    expect(substr_count((string) file_get_contents(consoleRoutesPath()), 'PlatformAgent::schedule'))->toBe(1);
+});
+
+it('skips wiring and warns LOUDLY with --no-schedule', function () {
+    seedConsoleRoutes();
+    fakeRegister();
+
+    $this->artisan('platform-agent:install --no-schedule')
+        ->expectsOutputToContain('NO BACKUPS WILL RUN')
+        ->assertExitCode(0);
+
+    expect((string) file_get_contents(consoleRoutesPath()))->not->toContain('PlatformAgent::schedule');
+});
+
+it('asks interactively and wires on the default yes', function () {
+    seedConsoleRoutes();
+    fakeRegister();
+
+    $this->artisan('platform-agent:install')
+        ->expectsConfirmation('Wire the agent schedule (heartbeat, reports, backups, retention) into routes/console.php now?', 'yes')
+        ->assertExitCode(0);
+
+    expect((string) file_get_contents(consoleRoutesPath()))->toContain('PlatformAgent::schedule');
+});
+
+it('warns LOUDLY when the interactive confirm is declined', function () {
+    seedConsoleRoutes();
+    fakeRegister();
+
+    $this->artisan('platform-agent:install')
+        ->expectsConfirmation('Wire the agent schedule (heartbeat, reports, backups, retention) into routes/console.php now?', 'no')
+        ->expectsOutputToContain('NO BACKUPS WILL RUN')
+        ->assertExitCode(0);
+
+    expect((string) file_get_contents(consoleRoutesPath()))->not->toContain('PlatformAgent::schedule');
+});
+
+it('warns LOUDLY when routes/console.php does not exist', function () {
+    // The Testbench skeleton ships no routes/console.php — assert that fact
+    // still holds, then rely on it.
+    expect(is_file(consoleRoutesPath()))->toBeFalse();
+
+    fakeRegister();
+
+    $this->artisan('platform-agent:install --schedule')
+        ->expectsOutputToContain('NO BACKUPS WILL RUN')
+        ->assertExitCode(0);
 });

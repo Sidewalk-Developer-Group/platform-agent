@@ -35,8 +35,13 @@ php artisan platform-agent:install
 
 `platform-agent:install` (PA1) publishes the config, performs the one-time
 **enrollment → runtime token exchange**, persists the durable runtime token
-**encrypted in your application's database**, wires the schedule, and runs a
-connectivity/auth pre-flight.
+**encrypted in your application's database**, and — since v1.1.0 — **wires the
+agent schedule into `routes/console.php` for you** (interactive confirm,
+default yes; idempotent — an existing registration is detected and never
+duplicated). For non-interactive provisioning pass `--schedule` (wire without
+asking) or `--no-schedule` (skip — a LOUD warning reminds you that **no
+backups run until the schedule is wired**). Verify any install with
+`php artisan platform-agent:diagnose`.
 
 ## Configuration — the only three env vars
 

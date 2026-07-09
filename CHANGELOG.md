@@ -13,6 +13,17 @@ split-backup `kind` baseline — Addendum F).
 
 ### Added
 
+- **`platform-agent:install` auto-wires the schedule.** Instead of only
+  printing a hint, install now appends the
+  `\SidewalkDevelopers\PlatformAgent\PlatformAgent::schedule(...)` one-liner
+  to `routes/console.php` — interactive confirm (default **yes**), with
+  `--schedule` / `--no-schedule` flags for non-interactive provisioning.
+  Idempotent: an existing `PlatformAgent::schedule` registration is detected
+  and never duplicated. Declining/skipping (or a missing/unwritable
+  routes/console.php) prints a LOUD "NO BACKUPS WILL RUN" warning plus the
+  manual snippet — closing the silent "install succeeded but nothing was ever
+  scheduled" failure mode.
+
 - **Doctor-grade `platform-agent:diagnose`.** Beyond the redacted config +
   connectivity probe, diagnose now runs PASS/WARN/FAIL checks and exits
   non-zero on any FAIL: a LIVE version verdict (fires a real heartbeat —

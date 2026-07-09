@@ -15,8 +15,12 @@ use SidewalkDevelopers\PlatformAgent\State\AgentStateStore;
  *
  * Publishes config, validates the 3 env vars, performs the enrollment -> runtime
  * PAT exchange via POST /api/v1/agent/register, persists the runtime PAT
- * ENCRYPTED in the customer DB (never `.env`), prints a schedule-wiring hint, and
- * fails loudly on connectivity/auth/upgrade errors (ADR-0007 §2.3 / Addendum D).
+ * ENCRYPTED in the customer DB (never `.env`), WIRES the agent schedule into
+ * routes/console.php (v1.1.0 — interactive confirm defaulting to yes;
+ * `--schedule` / `--no-schedule` for non-interactive runs; idempotent, never
+ * duplicated), and fails loudly on connectivity/auth/upgrade errors
+ * (ADR-0007 §2.3 / Addendum D). Skipping the wiring prints a LOUD warning —
+ * an unwired schedule means ZERO backups ever run.
  *
  * The enrollment exchange itself is shared with `platform-agent:register` via
  * {@see RunsEnrollmentExchange}; the wire payload comes from the shared
@@ -26,8 +30,23 @@ final class InstallCommand extends AbstractAgentCommand
 {
     use RunsEnrollmentExchange;
 
+    /**
+     * Appended to routes/console.php. Fully-qualified on purpose — no `use`
+     * statements needed mid-file; `PlatformAgent::schedule` doubles as the
+     * idempotency marker.
+     */
+    private const SCHEDULE_SNIPPET = <<<'PHP'
+
+// Platform Agent — heartbeat, telemetry report, split backups, local retention
+// and the restore poll (added by platform-agent:install).
+\SidewalkDevelopers\PlatformAgent\PlatformAgent::schedule(app(\Illuminate\Console\Scheduling\Schedule::class));
+
+PHP;
+
     protected $signature = 'platform-agent:install
-        {--force : Overwrite an existing published config}';
+        {--force : Overwrite an existing published config}
+        {--schedule : Wire the agent schedule into routes/console.php without prompting}
+        {--no-schedule : Skip schedule wiring (you must wire it yourself)}';
 
     protected $description = 'Onboard this application to the Cloud Hub (publish config, enroll, persist runtime token, wire schedule).';
 
@@ -70,10 +89,71 @@ final class InstallCommand extends AbstractAgentCommand
         $this->components->task('Stored runtime token (encrypted) in the application database');
         $this->components->info('Onboarding complete. This application is now paired with the Cloud Hub.');
 
-        $this->printScheduleHint();
+        $this->wireSchedule();
         $this->printDiscardEnrollmentHint();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Auto-wire `PlatformAgent::schedule(...)` into routes/console.php (v1.1.0)
+     * — closing the silent "install succeeded but zero backups ever run"
+     * failure mode. Idempotent: an existing registration is detected and never
+     * duplicated. Skipping (decline / --no-schedule / missing file) warns LOUD.
+     */
+    private function wireSchedule(): void
+    {
+        $consolePath = $this->laravel->basePath('routes/console.php');
+
+        if (is_file($consolePath) && str_contains((string) file_get_contents($consolePath), 'PlatformAgent::schedule')) {
+            $this->components->task('Agent schedule already wired in routes/console.php');
+
+            return;
+        }
+
+        if (! is_file($consolePath)) {
+            $this->warnScheduleNotWired('routes/console.php was not found, so it could not be wired automatically.');
+
+            return;
+        }
+
+        if (! $this->shouldWireSchedule()) {
+            $this->warnScheduleNotWired('Schedule wiring was skipped.');
+
+            return;
+        }
+
+        if (@file_put_contents($consolePath, self::SCHEDULE_SNIPPET, FILE_APPEND) === false) {
+            $this->warnScheduleNotWired('routes/console.php is not writable.');
+
+            return;
+        }
+
+        $this->components->task('Wired PlatformAgent::schedule(...) into routes/console.php');
+        $this->line('  Ensure the scheduler itself runs: `* * * * * php artisan schedule:run` (cron) or a schedule:work daemon.');
+    }
+
+    private function shouldWireSchedule(): bool
+    {
+        if ((bool) $this->option('no-schedule')) {
+            return false;
+        }
+
+        if ((bool) $this->option('schedule')) {
+            return true;
+        }
+
+        // Interactive default YES; non-interactive runs take the default too.
+        return $this->confirm('Wire the agent schedule (heartbeat, reports, backups, retention) into routes/console.php now?', true);
+    }
+
+    private function warnScheduleNotWired(string $reason): void
+    {
+        $this->newLine();
+        $this->components->error(
+            'NO BACKUPS WILL RUN — the agent schedule is NOT wired. '.$reason
+        );
+        $this->printScheduleHint();
     }
 
     private function publishConfig(): void
@@ -168,10 +248,11 @@ final class InstallCommand extends AbstractAgentCommand
     private function printScheduleHint(): void
     {
         $this->newLine();
-        $this->line('  Next: wire the agent schedule in routes/console.php with one line —');
+        $this->line('  Wire the agent schedule in routes/console.php with one line —');
         $this->line('    use SidewalkDevelopers\\PlatformAgent\\PlatformAgent;');
         $this->line('    PlatformAgent::schedule(app(\\Illuminate\\Console\\Scheduling\\Schedule::class));');
-        $this->line('  It registers the heartbeat (every 5 min), the hourly report, and both split backups.');
+        $this->line('  It registers the heartbeat (every 5 min), the hourly report, both split backups');
+        $this->line('  and the daily local retention cleans. Verify with `php artisan platform-agent:diagnose`.');
     }
 
     private function printDiscardEnrollmentHint(): void
