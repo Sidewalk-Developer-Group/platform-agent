@@ -65,6 +65,21 @@ final class PlatformAgent
             ->cron((string) Arr::get($config, 'backup.kinds.files.cadence', '0 2 * * *'))
             ->withoutOverlapping();
 
+        // Local retention (v1.1.0) — turns backup.kinds.*.retention_days live:
+        // a daily per-kind spatie backup:clean scoped like the backup runs.
+        // Code-side defaults: published configs predating v1.1.0 lack the keys.
+        if ((bool) Arr::get($config, 'backup.clean_enabled', true)) {
+            $cleanAt = (string) Arr::get($config, 'backup.clean_at', '03:00');
+
+            $schedule->command('platform-agent:clean --kind=database')
+                ->dailyAt($cleanAt)
+                ->withoutOverlapping();
+
+            $schedule->command('platform-agent:clean --kind=files')
+                ->dailyAt($cleanAt)
+                ->withoutOverlapping();
+        }
+
         // Rule 6: the restore poll fallback is ALWAYS wired — independent of the
         // optional `platform-agent:listen` push daemon (PA5). A `--once` sweep
         // drains any approved restore job to the configured deposit location.

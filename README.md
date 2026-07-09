@@ -69,6 +69,7 @@ hardcoded.
 | `platform-agent:heartbeat` | Frequent liveness ping (bytes only — Rule 1) | PA2 |
 | `platform-agent:report` | Richer health/version/environment report | PA2 |
 | `platform-agent:backup --kind=database\|files` | Split backup → checksum → upload | PA3 |
+| `platform-agent:clean --kind=database\|files` | Apply local retention (`retention_days`) to a kind's local archives | v1.1.0 |
 | `platform-agent:restore {location}` | Agent-PULL restore: pull → verify SHA256 (Rule 4) → deposit `backup.zip` + sidecar at {location} (non-destructive; `--job=<id>` to pick among many) | PA4 |
 | `platform-agent:listen {location?}` | Subscribe to Hub restore broadcasts and drain approved jobs instantly; poll fallback always on (`--once` = single poll sweep) | PA5 |
 
@@ -83,10 +84,25 @@ use SidewalkDevelopers\PlatformAgent\PlatformAgent;
 PlatformAgent::schedule(app(Schedule::class));
 ```
 
-It registers the heartbeat (every 5 min — Rule 2), an hourly report, and both
+It registers the heartbeat (every 5 min — Rule 2), an hourly report, both
 split backups (`--kind=database` / `--kind=files`) on their configured cadences
-(`config/platform-agent.php` → `backup.kinds.*.cadence`). Backup execution lands
-at PA3; the schedule entries are wired now so onboarding stays near-zero-code.
+(`config/platform-agent.php` → `backup.kinds.*.cadence`), and — since v1.1.0 —
+a **daily local retention clean per kind** (see below).
+
+### Local retention (v1.1.0)
+
+`backup.kinds.*.retention_days` (default 30 for database, 14 for files) is
+applied by a daily `platform-agent:clean --kind=…` schedule entry (at
+`PLATFORM_BACKUP_CLEAN_AT`, default `03:00`; disable scheduling with
+`PLATFORM_BACKUP_CLEAN_ENABLED=false`). It runs spatie `backup:clean
+--disable-notifications` scoped exactly like a backup run — this kind's backup
+name on the local temp disk only — so it never touches your own separate
+spatie backups. Retention semantics: keep everything `retention_days` days,
+then delete (the graduated spatie tiers are zeroed for the scoped run; your
+global `delete_oldest_when_using_more_megabytes_than` disk cap stays in
+effect). Uploaded archives are already deleted per run — this clean is the
+safety net for orphans left by crashed/interrupted runs. It is **local-only**
+hygiene: platform-side retention on storage nodes is governed by the Hub.
 
 ## Telemetry (real heartbeat facts — v1.1.0)
 

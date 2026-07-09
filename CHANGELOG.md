@@ -13,6 +13,17 @@ split-backup `kind` baseline — Addendum F).
 
 ### Added
 
+- **Local retention is live** (`backup.kinds.*.retention_days` was dead
+  config). `PlatformAgent::schedule()` now wires a daily
+  `platform-agent:clean --kind=database|files` entry per kind (at
+  `backup.clean_at`, default `03:00`; gate with `backup.clean_enabled`,
+  default true). The new command runs spatie
+  `backup:clean --disable-notifications` scoped exactly like a backup run
+  (per-kind name + local temp disk) with `keep_all_backups_for_days` pinned to
+  the kind's `retention_days` and the graduated tiers zeroed — everything
+  older than the horizon is deleted; the customer's global MB disk cap is left
+  untouched. Local-only orphan hygiene; node-side retention stays Hub-governed.
+  `retention_days <= 0` disables the clean for that kind.
 - **Real heartbeat/report telemetry.** Heartbeat and report now send measured
   facts instead of a hardcoded `healthy` shell: `last_backup_at` (latest
   successful run, recorded in a new non-secret `platform_agent_state` table),

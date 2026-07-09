@@ -186,6 +186,13 @@ return [
         'temp_disk' => env('PLATFORM_BACKUP_TEMP_DISK', 'local'),
         'name' => env('PLATFORM_BACKUP_NAME', 'platform-agent'),
 
+        // Local retention (v1.1.0): a daily per-kind `platform-agent:clean`
+        // schedule entry applies `kinds.*.retention_days` to the agent's OWN
+        // local archives (orphan safety net — uploads are already deleted per
+        // run). The toggle gates the SCHEDULE; manual cleans always run.
+        'clean_enabled' => (bool) env('PLATFORM_BACKUP_CLEAN_ENABLED', true),
+        'clean_at' => env('PLATFORM_BACKUP_CLEAN_AT', '03:00'),
+
         'kinds' => [
             'database' => [
                 'spatie_name' => env('PLATFORM_BACKUP_NAME_DB', null), // defaults to "{name}-db"

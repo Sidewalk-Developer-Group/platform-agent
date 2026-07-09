@@ -14,7 +14,9 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 use SidewalkDevelopers\PlatformAgent\Backup\ArchiveUploader;
+use SidewalkDevelopers\PlatformAgent\Backup\BackupCleaner;
 use SidewalkDevelopers\PlatformAgent\Backup\BackupRunner;
+use SidewalkDevelopers\PlatformAgent\Backup\SpatieBackupCleaner;
 use SidewalkDevelopers\PlatformAgent\Backup\SpatieBackupRunner;
 use SidewalkDevelopers\PlatformAgent\Http\TusUploadClient;
 use SidewalkDevelopers\PlatformAgent\Reporting\BackupRunReporter;
@@ -26,6 +28,7 @@ use SidewalkDevelopers\PlatformAgent\Restore\Push\RestorePushSubscriber;
 use SidewalkDevelopers\PlatformAgent\Restore\Push\StreamWebSocketConnector;
 use SidewalkDevelopers\PlatformAgent\Restore\Push\WebSocketConnector;
 use SidewalkDevelopers\PlatformAgent\Console\BackupCommand;
+use SidewalkDevelopers\PlatformAgent\Console\CleanCommand;
 use SidewalkDevelopers\PlatformAgent\Console\DiagnoseCommand;
 use SidewalkDevelopers\PlatformAgent\Console\HeartbeatCommand;
 use SidewalkDevelopers\PlatformAgent\Console\InstallCommand;
@@ -148,6 +151,14 @@ final class PlatformAgentServiceProvider extends ServiceProvider
             );
         });
 
+        // Local retention cleaner (v1.1.0) — same seam pattern as the runner.
+        $this->app->singleton(BackupCleaner::class, static function ($app): BackupCleaner {
+            return new SpatieBackupCleaner(
+                artisan: $app->make(Artisan::class),
+                config: $app->make(ConfigRepository::class),
+            );
+        });
+
         // --- Restore subsystem (PA4 / ADR-0011) ---------------------------
 
         // Manifest → byte download → SHA256 verify (Rule 4) → non-destructive
@@ -207,6 +218,7 @@ final class PlatformAgentServiceProvider extends ServiceProvider
                 HeartbeatCommand::class,
                 ReportCommand::class,
                 BackupCommand::class,
+                CleanCommand::class,
                 RestoreCommand::class,
                 ListenCommand::class,
             ]);
@@ -228,6 +240,7 @@ final class PlatformAgentServiceProvider extends ServiceProvider
             ArchiveUploader::class,
             BackupRunReporter::class,
             BackupRunner::class,
+            BackupCleaner::class,
             ArchiveRestorer::class,
             RestoreCoordinator::class,
             WebSocketConnector::class,
